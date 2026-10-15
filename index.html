@@ -639,6 +639,46 @@
       stream.scrollTop = stream.scrollHeight;
     }
 
+    function removeVietnameseTones(str) {
+      str = str.replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g,"a"); 
+      str = str.replace(/è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ/g,"e"); 
+      str = str.replace(/ì|í|ị|ỉ|ĩ/g,"i"); 
+      str = str.replace(/ò|ó|ọ|ỏ|õ|ô|ồ|ố|ộ|ổ|ỗ|ơ|ờ|ớ|ợ|ở|ỡ/g,"o"); 
+      str = str.replace(/ù|ú|ụ|ủ|ũ|ư|ừ|ứ|ự|ử|ữ/g,"u"); 
+      str = str.replace(/ỳ|ý|ỵ|ỷ|ỹ/g,"y"); 
+      str = str.replace(/đ/g,"d");
+      str = str.replace(/À|Á|Ạ|Ả|Ã|Â|Ầ|Ấ|Ậ|Ẩ|Ẫ|Ă|Ằ|Ắ|Ặ|Ẳ|Ẵ/g, "A");
+      str = str.replace(/È|É|Ẹ|Ẻ|Ẽ|Ê|Ề|Ế|Ệ|Ể|Ễ/g, "E");
+      str = str.replace(/Ì|Í|Ị|Ỉ|Ĩ/g, "I");
+      str = str.replace(/Ò|Ó|Ọ|Ỏ|Õ|Ô|Ồ|Ố|Ộ|Ổ|Ỗ|Ơ|Ờ|Ớ|Ợ|Ở|Ỡ/g, "O");
+      str = str.replace(/Ù|Ú|Ụ|Ủ|Ũ|Ư|Ừ|Ứ|Ự|Ử|Ữ/g, "U");
+      str = str.replace(/Ỳ|Ý|Ỵ|Ỷ|Ỹ/g, "Y");
+      str = str.replace(/Đ/g, "D");
+      return str.toLowerCase().trim();
+    }
+
+    function searchDevicesLocal(query) {
+      const qNorm = removeVietnameseTones(query);
+      const words = qNorm.split(/\s+/).filter(w => !['xai', 'dung', 'may', 'gi', 'thiet', 'bi', 'cho', 'hoi', 'la', 'ai', 'nao', 'o', 'phong', 'ban'].includes(w));
+      
+      // Match devices
+      let matches = [];
+      for (let d of allDevices) {
+        const fullStr = `${d.type} ${d.brand} ${d.barcode} ${d.hostname} ${d.user_name} ${d.department} ${d.location} ${d.cpu}`.toLowerCase();
+        const fullNorm = removeVietnameseTones(fullStr);
+        
+        let score = 0;
+        for (let w of words) {
+          if (fullNorm.includes(w)) score++;
+        }
+        if (score >= Math.max(1, Math.min(2, words.length))) {
+          matches.push({ d, score });
+        }
+      }
+      matches.sort((a,b) => b.score - a.score);
+      return matches.map(m => m.d);
+    }
+
     function sendChatMessage() {
       let input = document.getElementById("chatInput");
       let query = (input.value || "").trim();
@@ -647,31 +687,38 @@
       appendChatMessage("user", query);
       input.value = "";
 
-      setTimeout(() => {
-        let lower = query.toLowerCase();
-        let reply = "";
-        
-        if (lower.includes("chưa join") || lower.includes("dc") || lower.includes("domain")) {
-          let unjoined = allDevices.filter(d => String(d.join_dc || "").trim() !== "1");
-          reply = `🛡️ **Báo cáo Supabase Cloud:** Hiện có **${unjoined.length} thiết bị** chưa join DC (chiếm ${((unjoined.length/allDevices.length)*100).toFixed(1)}%). Cần kiểm tra rà soát bảo mật.`;
-        } else if (lower.includes("phòng ban") || lower.includes("đơn vị")) {
-          let map = {};
-          allDevices.forEach(d => { let dep = d.department || "Khác"; map[dep] = (map[dep] || 0) + 1; });
-          let sorted = Object.entries(map).sort((a,b) => b[1] - a[1]).slice(0, 5);
-          reply = `🏢 **Top 5 phòng ban nhiều máy nhất (Cloud):**\n` + sorted.map((s, i) => `${i+1}. ${s[0]}: **${s[1]} máy**`).join('\n');
-        } else if (lower.includes("pc") || lower.includes("laptop") || lower.includes("loại máy")) {
-          let pc = allDevices.filter(d => (d.type || "").toLowerCase().includes("pc")).length;
-          let lap = allDevices.filter(d => (d.type || "").toLowerCase().includes("lap")).length;
-          let ipad = allDevices.filter(d => (d.type || "").toLowerCase().includes("ipad")).length;
-          reply = `💻 **Cơ cấu loại thiết bị từ Supabase:**\n- Desktop (PC): **${pc} máy**\n- Laptop: **${lap} máy**\n- iPad / Tablet: **${ipad} máy**`;
+      let lower = query.toLowerCase();
+      let reply = "";
+      
+      if (lower.includes("chua join") || lower.includes("chưa join") || lower.includes("dc") || lower.includes("domain")) {
+        let unjoined = allDevices.filter(d => String(d.join_dc || "").trim() !== "1");
+        reply = `🛡️ **Báo cáo Join Domain (DC):** Hiện có **${unjoined.length} thiết bị** chưa join DC (chiếm ${((unjoined.length/allDevices.length)*100).toFixed(1)}%). Cần kiểm tra rà soát bảo mật.`;
+      } else if (lower.includes("phong ban") || lower.includes("phòng ban") || lower.includes("don vi") || lower.includes("đơn vị")) {
+        let map = {};
+        allDevices.forEach(d => { let dep = d.department || "Khác"; map[dep] = (map[dep] || 0) + 1; });
+        let sorted = Object.entries(map).sort((a,b) => b[1] - a[1]).slice(0, 5);
+        reply = `🏢 **Top 5 phòng ban nhiều máy nhất:**\n` + sorted.map((s, i) => `${i+1}. ${s[0]}: **${s[1]} máy**`).join('\n');
+      } else if (lower.includes("pc") || lower.includes("laptop") || lower.includes("loai may") || lower.includes("loại máy")) {
+        let pc = allDevices.filter(d => (d.type || "").toLowerCase().includes("pc")).length;
+        let lap = allDevices.filter(d => (d.type || "").toLowerCase().includes("lap")).length;
+        let ipad = allDevices.filter(d => (d.type || "").toLowerCase().includes("ipad")).length;
+        reply = `💻 **Cơ cấu loại thiết bị:**\n- Desktop (PC): **${pc} máy**\n- Laptop: **${lap} máy**\n- iPad / Tablet: **${ipad} máy**`;
+      } else {
+        // Direct search in 547 devices immediately
+        const found = searchDevicesLocal(query);
+        if (found.length > 0) {
+          reply = `🔍 **Tìm thấy ${found.length} thiết bị phù hợp:**\n\n` + found.slice(0, 3).map((d, i) => {
+            return `**${i+1}. ${d.user_name || 'Chưa gán'}** - ${d.department || 'N/A'}\n• **Loại máy:** ${d.type} ${d.brand}\n• **Tên máy:** <code>${d.hostname || 'N/A'}</code> (Mã vạch: <code>${d.barcode || 'N/A'}</code>)\n• **Cấu hình:** ${d.cpu || 'N/A'} • RAM ${d.ram || '4'}GB\n• **Join DC:** ${String(d.join_dc).trim() === '1' ? '✅ Đã Join' : '⚠️ Chưa Join'}`;
+          }).join('\n\n');
+
+          // Auto filter the table to show matching rows
+          document.getElementById("searchInput").value = query.replace(/(sai|dung|may|gi|thiet|bi|cho|hoi|la)/gi, "").trim();
+          renderTable();
         } else {
-          reply = `🔍 Đã tra cứu dữ liệu đám mây Supabase theo câu hỏi: "${query}". Anh có thể lọc trực tiếp trên bảng hoặc sửa nhanh bằng nút ✏️ nhé!`;
-          if (window.aicw && typeof window.aicw.send === 'function') {
-            window.aicw.send('Người dùng hỏi từ app Quản lý Excel Supabase: ' + query);
-          }
+          reply = `🔍 Không tìm thấy thông tin thiết bị nào khớp với từ khóa "${query}". Anh thử kiểm tra lại họ tên hoặc gõ mã vạch xem nhé!`;
         }
-        appendChatMessage("ai", reply);
-      }, 300);
+      }
+      appendChatMessage("ai", reply);
     }
 
     function exportCSV() {
