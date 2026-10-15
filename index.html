@@ -660,12 +660,8 @@
     }
 
 
-    function hasExactUserMatch(phrase) {
-      if (!phrase || phrase.length < 3) return false;
-      return allDevices.some(d => removeVietnameseTones(d.user_name || "").includes(phrase));
-    }
-
     function removeVietnameseTones(str) {
+      if (!str) return "";
       str = str.replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g,"a"); 
       str = str.replace(/è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ/g,"e"); 
       str = str.replace(/ì|í|ị|ỉ|ĩ/g,"i"); 
@@ -689,58 +685,39 @@
       const words = qNorm.split(/\s+/).filter(w => w.length > 0 && !stopWords.includes(w));
       const phrase = words.join(" ");
 
-      if (words.length === 0) return [];
+      if (!phrase) return [];
 
-      let exactPhraseMatches = [];
-      let tokenMatches = [];
+      // 1. Tìm người có tên chứa trọn vẹn cụm từ (Ví dụ: "nguyen anh thu" nằm trong "nguyen anh thu" hoặc "do nguyen anh thu")
+      let exactMatches = allDevices.filter(d => {
+        const u = removeVietnameseTones(d.user_name || "");
+        return u.includes(phrase);
+      });
 
-      for (let d of allDevices) {
-        const userNorm = removeVietnameseTones(d.user_name || "");
-        const hostNorm = removeVietnameseTones(d.hostname || "");
-        const deptNorm = removeVietnameseTones(d.department || "");
-        const codeNorm = removeVietnameseTones(d.barcode || "");
-
-        // 1. Tuyệt đối ưu tiên: Tên người dùng chứa trọn vẹn cụm từ tìm kiếm (Ví dụ: "nguyen anh thu")
-        if (phrase.length >= 3 && userNorm.includes(phrase)) {
-          // Tính điểm ưu tiên: nếu bằng chính xác 100% thì điểm cao nhất
-          let pScore = (userNorm === phrase) ? 1000 : 500;
-          exactPhraseMatches.push({ d, score: pScore });
-          continue;
-        }
-
-        // Tên máy chứa trọn vẹn
-        if (phrase.length >= 3 && hostNorm.includes(phrase)) {
-          exactPhraseMatches.push({ d, score: 300 });
-          continue;
-        }
-
-        // 2. Nếu không khớp cả cụm, kiểm tra TẤT CẢ các từ đều phải có mặt
-        let allMatched = true;
-        let tScore = 0;
-        for (let w of words) {
-          if (userNorm.includes(w)) { tScore += 30; }
-          else if (hostNorm.includes(w)) { tScore += 20; }
-          else if (deptNorm.includes(w)) { tScore += 10; }
-          else if (codeNorm.includes(w)) { tScore += 10; }
-          else {
-            allMatched = false;
-            break;
-          }
-        }
-
-        if (allMatched && tScore > 0) {
-          tokenMatches.push({ d, score: tScore });
-        }
+      if (exactMatches.length > 0) {
+        // Sắp xếp: Ai trùng khớp sát nhất lên đầu
+        exactMatches.sort((a, b) => {
+          const ua = removeVietnameseTones(a.user_name || "");
+          const ub = removeVietnameseTones(b.user_name || "");
+          if (ua === phrase && ub !== phrase) return -1;
+          if (ub === phrase && ua !== phrase) return 1;
+          return ua.length - ub.length;
+        });
+        return exactMatches;
       }
 
-      // Nếu có người khớp trọn vẹn cụm từ (Ví dụ: "Nguyễn Anh Thư") ➔ CHỈ trả về đúng người đó!
-      if (exactPhraseMatches.length > 0) {
-        exactPhraseMatches.sort((a,b) => b.score - a.score);
-        return exactPhraseMatches.map(m => m.d);
-      }
+      // 2. Tìm theo tên máy hoặc mã vạch
+      let codeMatches = allDevices.filter(d => {
+        const h = removeVietnameseTones(d.hostname || "");
+        const b = removeVietnameseTones(d.barcode || "");
+        return h.includes(phrase) || b.includes(phrase);
+      });
+      if (codeMatches.length > 0) return codeMatches;
 
-      tokenMatches.sort((a,b) => b.score - a.score);
-      return tokenMatches.map(m => m.d);
+      // 3. Fallback: Bắt buộc TẤT CẢ các từ tìm kiếm phải cùng xuất hiện
+      return allDevices.filter(d => {
+        const full = removeVietnameseTones(`${d.type} ${d.brand} ${d.barcode} ${d.hostname} ${d.user_name} ${d.department} ${d.cpu}`);
+        return words.every(w => full.includes(w));
+      });
     }
 
     function sendChatMessage() {
@@ -768,15 +745,15 @@
         let ipad = allDevices.filter(d => (d.type || "").toLowerCase().includes("ipad")).length;
         reply = `💻 **Cơ cấu loại thiết bị:**\n- Desktop (PC): **${pc} máy**\n- Laptop: **${lap} máy**\n- iPad / Tablet: **${ipad} máy**`;
       } else {
-        // Direct search in 547 devices immediately
         const found = searchDevicesLocal(query);
         if (found.length > 0) {
-          reply = `🔍 **Tìm thấy ${found.length} thiết bị phù hợp:**\n\n` + found.slice(0, 3).map((d, i) => {
+          reply = `🔍 **Tìm thấy ${found.length} thiết bị phù hợp:**\n\n` + found.map((d, i) => {
             return `**${i+1}. ${d.user_name || 'Chưa gán'}** - ${d.department || 'N/A'}\n• **Loại máy:** ${d.type} ${d.brand}\n• **Tên máy:** <code>${d.hostname || 'N/A'}</code> (Mã vạch: <code>${d.barcode || 'N/A'}</code>)\n• **Cấu hình:** ${d.cpu || 'N/A'} • RAM ${d.ram || '4'}GB\n• **Join DC:** ${String(d.join_dc).trim() === '1' ? '✅ Đã Join' : '⚠️ Chưa Join'}`;
           }).join('\n\n');
 
-          // Auto filter the table to show matching rows
-          document.getElementById("searchInput").value = query.replace(/(tim|kiem|xai|dung|sai|may|gi|thiet|bi|cho|hoi|la|ten)/gi, "").trim();
+          // Filter table with clean search keyword
+          const qClean = removeVietnameseTones(query).split(/\s+/).filter(w => !['tim', 'kiem', 'xai', 'dung', 'sai', 'may', 'gi', 'thiet', 'bi', 'cho', 'hoi', 'la', 'ai', 'nao', 'o', 'phong', 'ban', 'ten', 'nguoi'].includes(w)).join(' ');
+          document.getElementById("searchInput").value = qClean;
           renderTable();
         } else {
           reply = `🔍 Không tìm thấy thông tin thiết bị nào khớp với từ khóa "${query}". Anh thử kiểm tra lại họ tên hoặc gõ mã vạch xem nhé!`;
