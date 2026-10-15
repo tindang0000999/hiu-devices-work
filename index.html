@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
   <meta charset="utf-8">
-  <title>Quản Lý Máy Tính Công Việc - Supabase Cloud</title>
+  <title>Quản Lý Thiết Bị Máy Tính - HIU ITAM</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root {
@@ -23,29 +23,26 @@
 
     /* Login Screen */
     .auth-overlay { position: fixed; inset: 0; background: #0f172a; display: flex; align-items: center; justify-content: center; z-index: 9999; padding: 16px; }
-    .auth-card { background: var(--ui-surface); border-radius: 16px; width: 100%; max-width: 420px; padding: 32px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); border: 1px solid var(--ui-border); }
-    .auth-title { font-size: 22px; font-weight: 700; margin-bottom: 6px; text-align: center; }
-    .auth-subtitle { font-size: 13px; color: var(--ui-muted-fg); margin-bottom: 24px; text-align: center; line-height: 1.4; }
-    .auth-field { margin-bottom: 16px; }
+    .auth-card { background: var(--ui-surface); border-radius: 16px; width: 100%; max-width: 400px; padding: 32px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); border: 1px solid var(--ui-border); }
+    .auth-title { font-size: 20px; font-weight: 700; margin-bottom: 6px; text-align: center; }
+    .auth-subtitle { font-size: 13px; color: var(--ui-muted-fg); margin-bottom: 20px; text-align: center; line-height: 1.4; }
+    .auth-field { margin-bottom: 14px; }
     .auth-field label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
     .auth-input { width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--ui-border); font-size: 14px; outline: none; }
-    .auth-input:focus { border-color: var(--ui-accent); ring: 2px rgba(37,99,235,0.2); }
+    .auth-input:focus { border-color: var(--ui-accent); }
     .auth-btn { width: 100%; padding: 12px; border-radius: 8px; background: var(--ui-accent); color: white; border: none; font-weight: 600; font-size: 14px; cursor: pointer; transition: background 0.2s; }
     .auth-btn:hover { background: var(--ui-accent-hover); }
-    .auth-tabs { display: flex; border-bottom: 1px solid var(--ui-border); margin-bottom: 20px; }
-    .auth-tab { flex: 1; text-align: center; padding: 10px; font-size: 14px; font-weight: 600; cursor: pointer; color: var(--ui-muted-fg); border-bottom: 2px solid transparent; }
-    .auth-tab.active { color: var(--ui-accent); border-color: var(--ui-accent); }
-    .auth-alert { padding: 10px 12px; border-radius: 8px; font-size: 13px; margin-bottom: 16px; display: none; }
+    .auth-alert { padding: 10px 12px; border-radius: 8px; font-size: 13px; margin-bottom: 14px; display: none; }
     .auth-alert.error { background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; display: block; }
-    .auth-alert.success { background: #dcfce7; color: #16a34a; border: 1px solid #86efac; display: block; }
 
     /* Badges */
     .device-badge { display: inline-block; padding: 2px 8px; border-radius: 9999px; font-size: 11px; font-weight: 600; }
     .badge-pc { background: rgba(59, 130, 246, 0.15); color: #2563eb; }
     .badge-laptop { background: rgba(16, 185, 129, 0.15); color: #059669; }
     .badge-ipad { background: rgba(168, 85, 247, 0.15); color: #7c3aed; }
-    .badge-dc-yes { background: rgba(16, 185, 129, 0.15); color: #059669; }
-    .badge-dc-no { background: rgba(239, 68, 68, 0.15); color: #dc2626; font-weight: bold; }
+    .badge-status-ok { background: rgba(16, 185, 129, 0.15); color: #059669; }
+    .badge-status-warn { background: rgba(245, 158, 11, 0.15); color: #d97706; }
+    .badge-status-bad { background: rgba(239, 68, 68, 0.15); color: #dc2626; }
     
     /* Layout */
     .app-main-layout { display: flex; gap: 16px; align-items: flex-start; }
@@ -59,12 +56,11 @@
     /* Modal styling */
     .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 16px; }
     .modal-backdrop.active { display: flex; }
-    .modal-box { background: var(--ui-surface); border-radius: 12px; width: 100%; max-width: 540px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); border: 1px solid var(--ui-border); overflow: hidden; animation: popIn 0.2s ease-out; }
-    @keyframes popIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+    .modal-box { background: var(--ui-surface); border-radius: 12px; width: 100%; max-width: 500px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); border: 1px solid var(--ui-border); overflow: hidden; }
     
     /* Chat styling */
     .chat-messages { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; font-size: 13px; }
-    .chat-msg { max-width: 85%; padding: 8px 12px; border-radius: 10px; line-height: 1.4; }
+    .chat-msg { max-width: 88%; padding: 8px 12px; border-radius: 10px; line-height: 1.4; }
     .chat-msg.user { align-self: flex-end; background: var(--ui-accent); color: #fff; border-bottom-right-radius: 2px; }
     .chat-msg.ai { align-self: flex-start; background: var(--ui-bg); border: 1px solid var(--ui-border); color: var(--ui-fg); border-bottom-left-radius: 2px; }
     .quick-chip { font-size: 11px; padding: 4px 8px; border-radius: 6px; border: 1px solid var(--ui-border); background: var(--ui-surface); cursor: pointer; white-space: nowrap; }
@@ -83,9 +79,8 @@
     .ui-grid { display: grid; gap: 16px; }
     .ui-grid.cols-4 { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
     .ui-kpi { display: flex; flex-direction: column; gap: 4px; }
-    .ui-kpi-label { font-size: 12px; color: var(--ui-muted-fg); font-weight: 600; text-transform: uppercase; }
+    .ui-kpi-label { font-size: 11px; color: var(--ui-muted-fg); font-weight: 700; text-transform: uppercase; }
     .ui-kpi-value { font-size: 26px; font-weight: 700; }
-    .ui-kpi-delta { font-size: 11px; font-weight: 500; }
     .ui-table { width: 100%; border-collapse: collapse; text-align: left; }
     .ui-table th { background: #f8fafc; padding: 10px 12px; font-weight: 600; border-bottom: 1px solid var(--ui-border); color: var(--ui-muted-fg); }
     .ui-table td { padding: 10px 12px; border-bottom: 1px solid var(--ui-border); }
@@ -94,15 +89,15 @@
 </head>
 <body>
 
-  <!-- Auth Screen (Required before entering dashboard) -->
+  <!-- Auth Screen (Strict Login Only) -->
   <div class="auth-overlay" id="authOverlay">
     <div class="auth-card">
-      <div style="font-size: 40px; text-align: center; margin-bottom: 8px;">🔐</div>
-      <h2 class="auth-title">Đăng Nhập Hệ Thống</h2>
-      <p class="auth-subtitle">Cơ sở dữ liệu máy tính kiểm kê HIU<br>Bảo vệ bằng <strong>Supabase Cloud Database</strong></p>
+      <div style="font-size: 38px; text-align: center; margin-bottom: 8px;">💻</div>
+      <h2 class="auth-title">Quản Lý Thiết Bị Máy Tính</h2>
+      <p class="auth-subtitle">Cơ sở dữ liệu kiểm kê HIU • Supabase Cloud</p>
 
-      <div style="text-align: center; margin-bottom: 20px; font-weight: 700; color: #2563eb; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; background: #eff6ff; padding: 8px; border-radius: 8px;">
-        🔒 Hệ Thống Nội Bộ • Chỉ Đăng Nhập
+      <div style="text-align: center; margin-bottom: 18px; font-weight: 700; color: #2563eb; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; background: #eff6ff; padding: 8px; border-radius: 8px;">
+        🔒 Hệ Thống Nội Bộ • Đăng Nhập
       </div>
 
       <div class="auth-alert" id="authAlert"></div>
@@ -118,20 +113,17 @@
       </div>
 
       <button class="auth-btn" id="authSubmitBtn" onclick="handleAuthSubmit()">Vào Dashboard</button>
-      <div style="text-align: center; margin-top: 16px; font-size: 12px; color: var(--ui-muted-fg);">
-        Kết nối: <code>pvbpqhoiraacrpyvjiph.supabase.co</code>
-      </div>
     </div>
   </div>
 
-  <!-- Dashboard Container (Secured) -->
+  <!-- Dashboard Container -->
   <div id="mainDashboard">
     <!-- Header -->
     <header style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
       <div>
-        <div style="font-size: 11px; font-weight: 700; color: var(--ui-accent); letter-spacing: 0.5px;">HIU • SUPABASE CLOUD DATABASE</div>
-        <h1 style="font-size: 22px; font-weight: 700; margin: 2px 0;">💻 Quản Lý Máy Tính Công Việc (527 Thiết Bị)</h1>
-        <p style="font-size: 13px; color: var(--ui-muted-fg);">Đang kết nối: <span class="device-badge badge-laptop" id="cloudStatus">Cloud Live</span> • Người dùng: <strong id="currentUserEmail">dangtin107@gmail.com</strong></p>
+        <div style="font-size: 11px; font-weight: 700; color: var(--ui-accent); letter-spacing: 0.5px;">HIU • IT ASSET MANAGEMENT (ITAM)</div>
+        <h1 style="font-size: 22px; font-weight: 700; margin: 2px 0;">💻 Quản Lý Máy Tính Công Việc (OneDrive Sync)</h1>
+        <p style="font-size: 13px; color: var(--ui-muted-fg);">Chuẩn hóa 7 cột đã chọn • Người dùng: <strong id="currentUserEmail">dangtin107@gmail.com</strong></p>
       </div>
       <div style="display: flex; gap: 8px; align-items: center;">
         <button class="ui-btn secondary sm" onclick="loadFromSupabase()">🔄 Tải lại dữ liệu</button>
@@ -143,40 +135,40 @@
     <!-- KPI Cards -->
     <div class="ui-grid cols-4" style="margin-bottom: 16px;">
       <div class="ui-card ui-kpi">
-        <div class="ui-kpi-label">Tổng Thiết Bị Cloud</div>
+        <div class="ui-kpi-label">Tổng Thiết Bị (OneDrive)</div>
         <div class="ui-kpi-value" id="kpiTotal">0</div>
-        <div class="ui-kpi-delta" style="color: var(--ui-accent);">Supabase Postgres</div>
+        <div class="ui-kpi-delta" style="color: var(--ui-accent);">527 Máy công việc</div>
       </div>
       <div class="ui-card ui-kpi">
-        <div class="ui-kpi-label">PC Để Bàn</div>
+        <div class="ui-kpi-label">PC Để Bàn (Cột 4)</div>
         <div class="ui-kpi-value" id="kpiPC" style="color: #2563eb;">0</div>
         <div class="ui-kpi-delta" style="color: #2563eb;">Desktop</div>
       </div>
       <div class="ui-card ui-kpi">
-        <div class="ui-kpi-label">Laptop / Di Động</div>
+        <div class="ui-kpi-label">Laptop / Di Động (Cột 4)</div>
         <div class="ui-kpi-value" id="kpiLaptop" style="color: #059669;">0</div>
         <div class="ui-kpi-delta" style="color: #059669;">Xách tay / Tablet</div>
       </div>
       <div class="ui-card ui-kpi">
-        <div class="ui-kpi-label">Chưa Join DC</div>
-        <div class="ui-kpi-value" id="kpiWarning" style="color: #dc2626;">0</div>
-        <div class="ui-kpi-delta" style="color: #dc2626;">Cần cấu hình bảo mật</div>
+        <div class="ui-kpi-label">Đang Sử Dụng (Cột 22)</div>
+        <div class="ui-kpi-value" id="kpiActive" style="color: #10b981;">0</div>
+        <div class="ui-kpi-delta" style="color: #10b981;">Tình trạng bình thường</div>
       </div>
     </div>
 
-    <!-- Main Split Layout -->
+    <!-- Main Layout -->
     <div class="app-main-layout">
       <!-- Left: Table Section -->
       <div class="table-section">
         <!-- Search & Filter Controls -->
         <div class="ui-card" style="margin-bottom: 12px; padding: 12px;">
           <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
-            <div style="flex: 2; min-width: 200px;">
-              <input type="text" id="searchInput" class="ui-input" placeholder="🔍 Tìm tên máy, người dùng, mã vạch..." oninput="renderTable()">
+            <div style="flex: 2; min-width: 220px;">
+              <input type="text" id="searchInput" class="ui-input" placeholder="🔍 Tìm Người sử dụng (20), Tên máy (18), Mã vạch (7)..." oninput="renderTable()">
             </div>
             <div style="flex: 1; min-width: 120px;">
               <select id="typeFilter" class="ui-select" onchange="renderTable()">
-                <option value="">-- Tất cả loại --</option>
+                <option value="">-- Loại máy (4) --</option>
                 <option value="PC">PC</option>
                 <option value="Laptop">Laptop</option>
                 <option value="Ipad">Ipad</option>
@@ -184,51 +176,44 @@
             </div>
             <div style="flex: 1; min-width: 120px;">
               <select id="brandFilter" class="ui-select" onchange="renderTable()">
-                <option value="">-- Thương hiệu --</option>
+                <option value="">-- Hiệu (5) --</option>
                 <option value="Lenovo">Lenovo</option>
                 <option value="Dell">Dell</option>
                 <option value="HP">HP</option>
                 <option value="Apple">Apple / Mac</option>
               </select>
             </div>
-            <div style="flex: 1.5; min-width: 150px;">
+            <div style="flex: 1.5; min-width: 160px;">
               <select id="deptFilter" class="ui-select" onchange="renderTable()">
-                <option value="">-- Tất cả phòng ban --</option>
-              </select>
-            </div>
-            <div style="flex: 1; min-width: 120px;">
-              <select id="dcFilter" class="ui-select" onchange="renderTable()">
-                <option value="">-- Trạng thái DC --</option>
-                <option value="joined">Đã Join DC</option>
-                <option value="not_joined">Chưa Join DC</option>
+                <option value="">-- Phòng ban (8) --</option>
               </select>
             </div>
           </div>
         </div>
 
-        <!-- Table View -->
+        <!-- Table View: Displaying exactly columns 4, 5, 8, 10, 18, 20, 22 -->
         <div class="ui-card" style="padding: 0; overflow: hidden;">
           <div style="max-height: 480px; overflow-y: auto;">
             <table class="ui-table" style="font-size: 13px;">
               <thead>
                 <tr>
-                  <th style="width: 40px; text-align: center;">#</th>
-                  <th>Loại</th>
-                  <th>Hiệu</th>
-                  <th>Mã Vạch</th>
-                  <th>Tên Máy</th>
-                  <th>Người Sử Dụng</th>
-                  <th>Phòng Ban</th>
-                  <th>Cấu Hình (CPU / RAM)</th>
-                  <th>Join DC</th>
-                  <th style="text-align: center;">Sửa Cloud</th>
+                  <th style="width: 40px; text-align: center;">STT</th>
+                  <th>Loại máy (4)</th>
+                  <th>Hiệu (5)</th>
+                  <th>Mã vạch (7)</th>
+                  <th>Người sử dụng (20)</th>
+                  <th>Phòng ban / Đơn vị (8)</th>
+                  <th>Tầng/Khu (10)</th>
+                  <th>Tên máy DC (18)</th>
+                  <th>Tình trạng (22)</th>
+                  <th style="text-align: center;">Sửa</th>
                 </tr>
               </thead>
               <tbody id="tableBody"></tbody>
             </table>
           </div>
           <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; border-top: 1px solid var(--ui-border); font-size: 13px; color: var(--ui-muted-fg);">
-            <span id="recordCount">Đang đồng bộ với Supabase...</span>
+            <span id="recordCount">Đang đồng bộ...</span>
             <div style="display: flex; gap: 8px; align-items: center;">
               <button class="ui-btn ghost sm" onclick="prevPage()">◀</button>
               <span id="pageInfo">Trang 1 / 1</span>
@@ -243,36 +228,36 @@
         <div style="padding: 10px 14px; border-bottom: 1px solid var(--ui-border); background: rgba(37, 99, 235, 0.04); display: flex; align-items: center; justify-content: space-between;">
           <div style="display: flex; align-items: center; gap: 8px;">
             <span style="font-size: 16px;">🤖</span>
-            <strong>Trợ Lý Supabase AI</strong>
+            <strong>Trợ Lý Thiết Bị AI</strong>
           </div>
-          <span class="device-badge badge-laptop" style="font-size: 10px;">Postgres Sync</span>
+          <span class="device-badge badge-laptop" style="font-size: 10px;">OneDrive Sync</span>
         </div>
 
         <div style="padding: 8px 10px; border-bottom: 1px solid #f1f5f9; display: flex; gap: 6px; overflow-x: auto;">
-          <div class="quick-chip" onclick="askQuickPrompt('Có bao nhiêu máy tính chưa join domain DC?')">🛡️ Chưa Join DC</div>
+          <div class="quick-chip" onclick="askQuickPrompt('Nguyễn Anh Thư dùng máy gì?')">👤 Nguyễn Anh Thư</div>
           <div class="quick-chip" onclick="askQuickPrompt('Phòng ban nào đang có nhiều máy tính nhất?')">🏢 Top phòng ban</div>
-          <div class="quick-chip" onclick="askQuickPrompt('Thống kê số lượng theo loại máy PC vs Laptop')">💻 PC vs Laptop</div>
+          <div class="quick-chip" onclick="askQuickPrompt('Thống kê số lượng PC vs Laptop')">💻 PC vs Laptop</div>
         </div>
 
         <div class="chat-messages" id="chatStream">
           <div class="chat-msg ai">
-            Chào anh! Dữ liệu 527 thiết bị hiện đã được bảo vệ trên Supabase Cloud. Em có thể hỗ trợ anh truy vấn, phân tích số liệu hoặc kiểm tra thông tin bất kỳ máy nào!
+            Chào anh! Dữ liệu 527 máy tính đã được đồng bộ chuẩn hóa theo 7 cột anh đã chọn (Loại máy, Hiệu, Phòng ban, Tầng/Khu, Tên máy DC, Người dùng, Tình trạng). Anh có thể hỏi tra cứu bất kỳ ai nhé!
           </div>
         </div>
 
         <div style="padding: 10px; border-top: 1px solid var(--ui-border); display: flex; gap: 8px; background: var(--ui-surface);">
-          <input type="text" id="chatInput" class="ui-input" style="font-size: 13px;" placeholder="Hỏi AI về cơ sở dữ liệu Supabase..." onkeydown="if(event.key==='Enter') sendChatMessage()">
+          <input type="text" id="chatInput" class="ui-input" style="font-size: 13px;" placeholder="Hỏi AI về người dùng hoặc máy tính..." onkeydown="if(event.key==='Enter') sendChatMessage()">
           <button class="ui-btn primary sm" onclick="sendChatMessage()">Gửi</button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Modal: Edit Device (Sync to Supabase Cloud) -->
+  <!-- Modal: Edit Device (Cols: 4, 5, 8, 10, 18, 20, 22) -->
   <div class="modal-backdrop" id="editModal">
     <div class="modal-box">
       <div style="padding: 14px 18px; border-bottom: 1px solid var(--ui-border); display: flex; justify-content: space-between; align-items: center;">
-        <h3 style="margin: 0; font-size: 16px;">✏️ Chỉnh Sửa Thiết Bị (Supabase Cloud)</h3>
+        <h3 style="margin: 0; font-size: 16px;">✏️ Chỉnh Sửa Máy Tính (7 Cột Chuẩn)</h3>
         <button class="ui-btn ghost sm" onclick="closeEditModal()">✕</button>
       </div>
       <div style="padding: 16px; display: flex; flex-direction: column; gap: 12px; font-size: 13px;">
@@ -281,7 +266,7 @@
 
         <div style="display: flex; gap: 12px;">
           <div style="flex: 1;">
-            <label style="font-weight: 600; display: block; margin-bottom: 4px;">Loại máy</label>
+            <label style="font-weight: 600; display: block; margin-bottom: 4px;">Loại máy (4)</label>
             <select id="editType" class="ui-select">
               <option value="PC">PC</option>
               <option value="Laptop">Laptop</option>
@@ -290,7 +275,7 @@
             </select>
           </div>
           <div style="flex: 1;">
-            <label style="font-weight: 600; display: block; margin-bottom: 4px;">Thương hiệu</label>
+            <label style="font-weight: 600; display: block; margin-bottom: 4px;">Hiệu máy (5)</label>
             <select id="editBrand" class="ui-select">
               <option value="Dell">Dell</option>
               <option value="Lenovo">Lenovo</option>
@@ -305,72 +290,54 @@
 
         <div style="display: flex; gap: 12px;">
           <div style="flex: 1;">
-            <label style="font-weight: 600; display: block; margin-bottom: 4px;">Mã vạch</label>
-            <input type="text" id="editBarcode" class="ui-input">
+            <label style="font-weight: 600; display: block; margin-bottom: 4px;">Người sử dụng (20)</label>
+            <input type="text" id="editUser" class="ui-input" placeholder="Họ tên người dùng...">
           </div>
           <div style="flex: 1;">
-            <label style="font-weight: 600; display: block; margin-bottom: 4px;">Tên máy (Hostname)</label>
-            <input type="text" id="editName" class="ui-input">
+            <label style="font-weight: 600; display: block; margin-bottom: 4px;">Tên máy trên DC (18)</label>
+            <input type="text" id="editName" class="ui-input" placeholder="HIU_...">
           </div>
         </div>
 
         <div style="display: flex; gap: 12px;">
-          <div style="flex: 1;">
-            <label style="font-weight: 600; display: block; margin-bottom: 4px;">Người sử dụng</label>
-            <input type="text" id="editUser" class="ui-input">
-          </div>
-          <div style="flex: 1;">
-            <label style="font-weight: 600; display: block; margin-bottom: 4px;">Phòng ban</label>
+          <div style="flex: 1.5;">
+            <label style="font-weight: 600; display: block; margin-bottom: 4px;">Đơn vị / Phòng ban (8)</label>
             <input type="text" id="editDept" class="ui-input">
           </div>
-        </div>
-
-        <div style="display: flex; gap: 12px;">
-          <div style="flex: 2;">
-            <label style="font-weight: 600; display: block; margin-bottom: 4px;">Cấu hình CPU</label>
-            <input type="text" id="editCPU" class="ui-input">
-          </div>
           <div style="flex: 1;">
-            <label style="font-weight: 600; display: block; margin-bottom: 4px;">RAM (GB)</label>
-            <select id="editRAM" class="ui-select">
-              <option value="4">4 GB</option>
-              <option value="8">8 GB</option>
-              <option value="16">16 GB</option>
-              <option value="32">32 GB</option>
-              <option value="">Khác</option>
-            </select>
+            <label style="font-weight: 600; display: block; margin-bottom: 4px;">Tầng / Khu (10)</label>
+            <input type="text" id="editLocation" class="ui-input">
           </div>
         </div>
 
         <div>
-          <label style="font-weight: 600; display: block; margin-bottom: 4px;">Trạng thái Join Domain (DC)</label>
-          <select id="editDC" class="ui-select">
-            <option value="1">Đã Join DC (1)</option>
-            <option value="0">Chưa Join DC (0 hoặc Trống)</option>
+          <label style="font-weight: 600; display: block; margin-bottom: 4px;">Tình trạng máy (22)</label>
+          <select id="editStatus" class="ui-select">
+            <option value="Đang sử dụng">Đang sử dụng</option>
+            <option value="Chờ thanh lý">Chờ thanh lý</option>
+            <option value="Hỏng">Hỏng</option>
+            <option value="Máy mới">Máy mới</option>
           </select>
         </div>
       </div>
 
       <div style="padding: 12px 18px; border-top: 1px solid var(--ui-border); background: var(--ui-bg); display: flex; justify-content: flex-end; gap: 8px;">
-        <button class="ui-btn ghost sm" onclick="closeEditModal()">Hủy bỏ</button>
-        <button class="ui-btn primary sm" id="btnSaveCloud" onclick="saveDeviceChanges()">💾 Lưu lên Cloud</button>
+        <button class="ui-btn ghost sm" onclick="closeEditModal()">Hủy</button>
+        <button class="ui-btn primary sm" id="btnSaveCloud" onclick="saveDeviceChanges()">💾 Lưu thay đổi</button>
       </div>
     </div>
   </div>
 
   <script>
-    // Supabase Credentials
     const SUPABASE_URL = "https://pvbpqhoiraacrpyvjiph.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB2YnBxaG9pcmFhY3JweXZqaXBoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE4OTM1MTIsImV4cCI6MjEwNzQ2OTUxMn0.HFfUjADJgYi4D5hjiPJS-7SpQVcq3nsjuelOXQ32mwo";
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    let authMode = "signin";
     let allDevices = [];
     let filteredDevices = [];
     let currentPage = 1;
     const pageSize = 15;
 
-    // Check existing session
     async function checkAuth() {
       const { data: { session } } = await supabaseClient.auth.getSession();
       if (session) {
@@ -382,38 +349,19 @@
       }
     }
 
-    function setAuthMode(mode) {
-      authMode = mode;
-      document.getElementById("tabSignIn").className = "auth-tab " + (mode === "signin" ? "active" : "");
-      document.getElementById("tabSignUp").className = "auth-tab " + (mode === "signup" ? "active" : "");
-      document.getElementById("authSubmitBtn").innerText = mode === "signin" ? "Vào Dashboard" : "Tạo Tài Khoản Mới";
-      hideAuthAlert();
-    }
-
-    function showAuthAlert(msg, type) {
-      const el = document.getElementById("authAlert");
-      el.className = "auth-alert " + type;
-      el.innerText = msg;
-    }
-    function hideAuthAlert() {
-      document.getElementById("authAlert").className = "auth-alert";
-    }
-
     async function handleAuthSubmit() {
       const email = document.getElementById("authEmail").value.trim();
       const password = document.getElementById("authPassword").value.trim();
 
       if (!email || !password) {
-        showAuthAlert("Vui lòng nhập đầy đủ Email và Mật khẩu.", "error");
+        showAuthAlert("Vui lòng nhập mật khẩu.", "error");
         return;
       }
 
-      hideAuthAlert();
-      document.getElementById("authSubmitBtn").innerText = "Đang xử lý...";
-
+      document.getElementById("authSubmitBtn").innerText = "Đang kiểm tra...";
       const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
       if (error) {
-        showAuthAlert("Đăng nhập thất bại: Tài khoản hoặc mật khẩu không đúng. Hệ thống không cho phép người ngoài tự đăng ký.", "error");
+        showAuthAlert("Mật khẩu không chính xác. Vui lòng thử lại.", "error");
         document.getElementById("authSubmitBtn").innerText = "Vào Dashboard";
       } else {
         document.getElementById("authOverlay").style.display = "none";
@@ -422,15 +370,19 @@
       }
     }
 
+    function showAuthAlert(msg, type) {
+      const el = document.getElementById("authAlert");
+      el.className = "auth-alert " + type;
+      el.innerText = msg;
+    }
+
     async function handleSignOut() {
       await supabaseClient.auth.signOut();
       document.getElementById("authOverlay").style.display = "flex";
-      setAuthMode("signin");
     }
 
-    // Load devices from Supabase Postgres
     async function loadFromSupabase() {
-      document.getElementById("recordCount").innerText = "Đang tải dữ liệu từ Supabase Cloud...";
+      document.getElementById("recordCount").innerText = "Đang tải dữ liệu 527 máy tính...";
       const { data, error } = await supabaseClient
         .from("devices")
         .select("*")
@@ -446,35 +398,32 @@
       populateDeptFilter();
       updateKPIs();
       renderTable();
-      appendChatMessage("ai", `✅ Đã đồng bộ thành công **${allDevices.length} thiết bị** trực tiếp từ Supabase Cloud Database.`);
     }
 
     function updateKPIs() {
       let total = allDevices.length;
-      let pcCount = 0, laptopCount = 0, warningCount = 0;
+      let pcCount = 0, laptopCount = 0, activeCount = 0;
       
       allDevices.forEach(d => {
         let type = (d.type || "").toLowerCase();
         if (type.includes("pc")) pcCount++;
         else if (type.includes("lap") || type.includes("ipad") || type.includes("mac")) laptopCount++;
         
-        let dc = String(d.join_dc || "").trim();
-        if (dc === "" || dc === "0" || dc.toLowerCase() === "no") {
-          warningCount++;
-        }
+        let st = (d.cpu || "").toLowerCase();
+        if (st.includes("đang") || st.includes("dung") || st.includes("sử dụng")) activeCount++;
       });
 
       document.getElementById("kpiTotal").innerText = total;
       document.getElementById("kpiPC").innerText = pcCount;
       document.getElementById("kpiLaptop").innerText = laptopCount;
-      document.getElementById("kpiWarning").innerText = warningCount;
+      document.getElementById("kpiActive").innerText = activeCount || total;
     }
 
     function populateDeptFilter() {
       let depts = new Set();
       allDevices.forEach(d => { if (d.department) depts.add(d.department); });
       let sel = document.getElementById("deptFilter");
-      sel.innerHTML = '<option value="">-- Tất cả phòng ban --</option>';
+      sel.innerHTML = '<option value="">-- Phòng ban (8) --</option>';
       Array.from(depts).sort().forEach(dept => {
         let opt = document.createElement("option");
         opt.value = dept;
@@ -483,43 +432,57 @@
       });
     }
 
+    function removeVietnameseTones(str) {
+      if (!str) return "";
+      str = str.replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g,"a"); 
+      str = str.replace(/è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ/g,"e"); 
+      str = str.replace(/ì|í|ị|ỉ|ĩ/g,"i"); 
+      str = str.replace(/ò|ó|ọ|ỏ|õ|ô|ồ|ố|ộ|ổ|ỗ|ơ|ờ|ớ|ợ|ở|ỡ/g,"o"); 
+      str = str.replace(/ù|ú|ụ|ủ|ũ|ư|ừ|ứ|ự|ử|ữ/g,"u"); 
+      str = str.replace(/ỳ|ý|ỵ|ỷ|ỹ/g,"y"); 
+      str = str.replace(/đ/g,"d");
+      str = str.replace(/À|Á|Ạ|Ả|Ã|Â|Ầ|Ấ|Ậ|Ẩ|Ẫ|Ă|Ằ|Ắ|Ặ|Ẳ|Ẵ/g, "A");
+      str = str.replace(/È|É|Ẹ|Ẻ|Ẽ|Ê|Ề|Ế|Ệ|Ể|Ễ/g, "E");
+      str = str.replace(/Ì|Í|Ị|Ỉ|Ĩ/g, "I");
+      str = str.replace(/Ò|Ó|Ọ|Ỏ|Õ|Ô|Ồ|Ố|Ộ|Ổ|Ỗ|Ơ|Ờ|Ớ|Ợ|Ở|Ỡ/g, "O");
+      str = str.replace(/Ù|Ú|Ụ|Ủ|Ũ|Ư|Ừ|Ứ|Ự|Ử|Ữ/g, "U");
+      str = str.replace(/Ỳ|Ý|Ỵ|Ỷ|Ỹ/g, "Y");
+      str = str.replace(/Đ/g, "D");
+      return str.toLowerCase().trim();
+    }
+
     function renderTable() {
-      let search = (document.getElementById("searchInput").value || "").toLowerCase();
+      let search = (document.getElementById("searchInput").value || "").trim();
       let type = document.getElementById("typeFilter").value;
       let brand = document.getElementById("brandFilter").value;
       let dept = document.getElementById("deptFilter").value;
-      let dc = document.getElementById("dcFilter").value;
 
       const sNorm = removeVietnameseTones(search);
       const sWords = sNorm.split(/\s+/).filter(w => w.length > 0);
-
       const sPhrase = sWords.join(" ");
 
       filteredDevices = allDevices.filter(d => {
         const userNorm = removeVietnameseTones(d.user_name || "");
         const hostNorm = removeVietnameseTones(d.hostname || "");
-        const fullStr = `${d.type} ${d.brand} ${d.barcode} ${d.hostname} ${d.user_name} ${d.department} ${d.cpu}`.toLowerCase();
+        const barcodeNorm = removeVietnameseTones(d.barcode || "");
+        const fullStr = `${d.type} ${d.brand} ${d.barcode} ${d.hostname} ${d.user_name} ${d.department} ${d.location}`.toLowerCase();
         const fullNorm = removeVietnameseTones(fullStr);
 
         if (sWords.length > 0) {
-          // Nếu tìm cụm họ tên (>= 2 từ) và có người khớp chính xác cả cụm ➔ chỉ giữ người khớp cả cụm
-          if (sWords.length >= 2 && userNorm.includes(sPhrase)) {
-            // Keep
-          } else if (sWords.length >= 2 && hasExactUserMatch(sPhrase)) {
-            return false;
+          // If searching for full phrase matching username
+          if (userNorm.includes(sPhrase)) {
+            // keep
           } else {
+            // Check if every word matches somewhere
             for (let w of sWords) {
               if (!fullNorm.includes(w)) return false;
             }
           }
         }
+
         if (type && d.type !== type) return false;
         if (brand && !(d.brand || "").toLowerCase().includes(brand.toLowerCase())) return false;
         if (dept && d.department !== dept) return false;
-        
-        let isJoined = String(d.join_dc || "").trim() === "1";
-        if (dc === "joined" && !isJoined) return false;
-        if (dc === "not_joined" && isJoined) return false;
         return true;
       });
 
@@ -546,21 +509,22 @@
           if (typeLower.includes("lap")) typeBadge = "badge-laptop";
           else if (typeLower.includes("ipad")) typeBadge = "badge-ipad";
 
-          let isDc = String(d.join_dc || "").trim() === "1";
-          let dcHtml = isDc ? '<span class="device-badge badge-dc-yes">Đã Join</span>' : '<span class="device-badge badge-dc-no">Chưa</span>';
+          let statusClass = "badge-status-ok";
+          let statusText = d.cpu || "Đang sử dụng";
+          if (statusText.toLowerCase().includes("thanh lý") || statusText.toLowerCase().includes("hỏng")) statusClass = "badge-status-bad";
 
           tr.innerHTML = `
             <td style="text-align: center; color: var(--ui-muted-fg);">${start + idx + 1}</td>
             <td><span class="device-badge ${typeBadge}">${d.type || "N/A"}</span></td>
             <td><strong>${d.brand || ""}</strong></td>
-            <td><code>${d.barcode || ""}</code></td>
-            <td><strong>${d.hostname || "N/A"}</strong></td>
-            <td>${d.user_name || "Chưa gán"}</td>
+            <td><code>${d.barcode || "N/A"}</code></td>
+            <td><strong style="color: var(--ui-accent);">${d.user_name || "Chưa gán"}</strong></td>
             <td>${d.department || "N/A"}</td>
-            <td>${d.cpu || ""} ${d.ram ? "• " + d.ram + "GB" : ""}</td>
-            <td>${dcHtml}</td>
+            <td>${d.location || "N/A"}</td>
+            <td><code>${d.hostname || "N/A"}</code></td>
+            <td><span class="device-badge ${statusClass}">${statusText}</span></td>
             <td style="text-align: center;">
-              <button class="ui-btn ghost sm" style="padding: 2px 6px;" onclick="openEditModal(${globalIdx})">✏️</button>
+              <button class="ui-btn ghost sm" onclick="openEditModal(${globalIdx})">✏️</button>
             </td>
           `;
           tbody.appendChild(tr);
@@ -568,17 +532,12 @@
       }
 
       let totalPages = Math.ceil(filteredDevices.length / pageSize) || 1;
-      document.getElementById("recordCount").innerText = `Hiển thị ${pageItems.length} / ${filteredDevices.length} máy (Supabase Cloud)`;
+      document.getElementById("recordCount").innerText = `Hiển thị ${pageItems.length} / ${filteredDevices.length} máy`;
       document.getElementById("pageInfo").innerText = `Trang ${currentPage} / ${totalPages}`;
     }
 
-    function prevPage() {
-      if (currentPage > 1) { currentPage--; displayPage(); }
-    }
-    function nextPage() {
-      let totalPages = Math.ceil(filteredDevices.length / pageSize) || 1;
-      if (currentPage < totalPages) { currentPage++; displayPage(); }
-    }
+    function prevPage() { if (currentPage > 1) { currentPage--; displayPage(); } }
+    function nextPage() { let totalPages = Math.ceil(filteredDevices.length / pageSize) || 1; if (currentPage < totalPages) { currentPage++; displayPage(); } }
 
     function openEditModal(globalIdx) {
       let d = allDevices[globalIdx];
@@ -587,19 +546,15 @@
       document.getElementById("editDeviceId").value = d.id;
       document.getElementById("editType").value = d.type || "PC";
       document.getElementById("editBrand").value = d.brand || "Dell";
-      document.getElementById("editBarcode").value = d.barcode || "";
-      document.getElementById("editName").value = d.hostname || "";
       document.getElementById("editUser").value = d.user_name || "";
+      document.getElementById("editName").value = d.hostname || "";
       document.getElementById("editDept").value = d.department || "";
-      document.getElementById("editCPU").value = d.cpu || "";
-      document.getElementById("editRAM").value = d.ram || "";
-      document.getElementById("editDC").value = String(d.join_dc || "").trim() === "1" ? "1" : "0";
+      document.getElementById("editLocation").value = d.location || "";
+      document.getElementById("editStatus").value = d.cpu || "Đang sử dụng";
       document.getElementById("editModal").classList.add("active");
     }
 
-    function closeEditModal() {
-      document.getElementById("editModal").classList.remove("active");
-    }
+    function closeEditModal() { document.getElementById("editModal").classList.remove("active"); }
 
     async function saveDeviceChanges() {
       let idx = parseInt(document.getElementById("editIndex").value);
@@ -607,42 +562,37 @@
       if (isNaN(idx) || !allDevices[idx]) return;
 
       const btn = document.getElementById("btnSaveCloud");
-      btn.innerText = "Đang lưu Cloud...";
+      btn.innerText = "Đang lưu...";
       btn.disabled = true;
 
       const updatedPayload = {
         type: document.getElementById("editType").value,
         brand: document.getElementById("editBrand").value,
-        barcode: document.getElementById("editBarcode").value,
-        hostname: document.getElementById("editName").value,
-        user_name: document.getElementById("editUser").value,
-        department: document.getElementById("editDept").value,
-        cpu: document.getElementById("editCPU").value,
-        ram: document.getElementById("editRAM").value,
-        join_dc: document.getElementById("editDC").value
+        user_name: document.getElementById("editUser").value.trim(),
+        hostname: document.getElementById("editName").value.trim(),
+        department: document.getElementById("editDept").value.trim(),
+        location: document.getElementById("editLocation").value.trim(),
+        cpu: document.getElementById("editStatus").value
       };
 
-      // Update directly to Supabase Postgres Table
       const { data, error } = await supabaseClient
         .from("devices")
         .update(updatedPayload)
         .eq("id", deviceId);
 
-      btn.innerText = "💾 Lưu lên Cloud";
+      btn.innerText = "💾 Lưu thay đổi";
       btn.disabled = false;
 
       if (error) {
-        alert("Lỗi khi cập nhật lên Supabase: " + error.message);
+        alert("Lỗi khi lưu lên Supabase: " + error.message);
         return;
       }
 
-      // Update local state
       Object.assign(allDevices[idx], updatedPayload);
-
       closeEditModal();
       updateKPIs();
       displayPage();
-      appendChatMessage("ai", `✅ Đã lưu trực tiếp lên Supabase Cloud: Máy **${updatedPayload.hostname}** (${updatedPayload.user_name || "Chưa gán"}).`);
+      appendChatMessage("ai", `✅ Đã cập nhật thành công thiết bị cho **${updatedPayload.user_name}**.`);
     }
 
     function askQuickPrompt(text) {
@@ -659,27 +609,7 @@
       stream.scrollTop = stream.scrollHeight;
     }
 
-
-    function removeVietnameseTones(str) {
-      if (!str) return "";
-      str = str.replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g,"a"); 
-      str = str.replace(/è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ/g,"e"); 
-      str = str.replace(/ì|í|ị|ỉ|ĩ/g,"i"); 
-      str = str.replace(/ò|ó|ọ|ỏ|õ|ô|ồ|ố|ộ|ổ|ỗ|ơ|ờ|ớ|ợ|ở|ỡ/g,"o"); 
-      str = str.replace(/ù|ú|ụ|ủ|ũ|ư|ừ|ứ|ự|ử|ữ/g,"u"); 
-      str = str.replace(/ỳ|ý|ỵ|ỷ|ỹ/g,"y"); 
-      str = str.replace(/đ/g,"d");
-      str = str.replace(/À|Á|Ạ|Ả|Ã|Â|Ầ|Ấ|Ậ|Ẩ|Ẫ|Ă|Ằ|Ắ|Ặ|Ẳ|Ẵ/g, "A");
-      str = str.replace(/È|É|Ẹ|Ẻ|Ẽ|Ê|Ề|Ế|Ệ|Ể|Ễ/g, "E");
-      str = str.replace(/Ì|Í|Ị|Ỉ|Ĩ/g, "I");
-      str = str.replace(/Ò|Ó|Ọ|Ỏ|Õ|Ô|Ồ|Ố|Ộ|Ổ|Ỗ|Ơ|Ờ|Ớ|Ợ|Ở|Ỡ/g, "O");
-      str = str.replace(/Ù|Ú|Ụ|Ủ|Ũ|Ư|Ừ|Ứ|Ự|Ử|Ữ/g, "U");
-      str = str.replace(/Ỳ|Ý|Ỵ|Ỷ|Ỹ/g, "Y");
-      str = str.replace(/Đ/g, "D");
-      return str.toLowerCase().trim();
-    }
-
-    function searchDevicesLocal(query) {
+    function searchExact(query) {
       const qNorm = removeVietnameseTones(query);
       const stopWords = ['tim', 'kiem', 'xai', 'dung', 'sai', 'may', 'gi', 'thiet', 'bi', 'cho', 'hoi', 'la', 'ai', 'nao', 'o', 'phong', 'ban', 'ten', 'nguoi', 'co', 'anh', 'chi', 'em'];
       const words = qNorm.split(/\s+/).filter(w => w.length > 0 && !stopWords.includes(w));
@@ -687,35 +617,19 @@
 
       if (!phrase) return [];
 
-      // 1. Tìm người có tên chứa trọn vẹn cụm từ (Ví dụ: "nguyen anh thu" nằm trong "nguyen anh thu" hoặc "do nguyen anh thu")
-      let exactMatches = allDevices.filter(d => {
-        const u = removeVietnameseTones(d.user_name || "");
-        return u.includes(phrase);
-      });
+      // 1. Match exact phrase in user_name
+      let userMatches = allDevices.filter(d => removeVietnameseTones(d.user_name || "").includes(phrase));
+      if (userMatches.length > 0) return userMatches;
 
-      if (exactMatches.length > 0) {
-        // Sắp xếp: Ai trùng khớp sát nhất lên đầu
-        exactMatches.sort((a, b) => {
-          const ua = removeVietnameseTones(a.user_name || "");
-          const ub = removeVietnameseTones(b.user_name || "");
-          if (ua === phrase && ub !== phrase) return -1;
-          if (ub === phrase && ua !== phrase) return 1;
-          return ua.length - ub.length;
-        });
-        return exactMatches;
-      }
-
-      // 2. Tìm theo tên máy hoặc mã vạch
+      // 2. Match exact in hostname or barcode
       let codeMatches = allDevices.filter(d => {
-        const h = removeVietnameseTones(d.hostname || "");
-        const b = removeVietnameseTones(d.barcode || "");
-        return h.includes(phrase) || b.includes(phrase);
+        return removeVietnameseTones(d.hostname || "").includes(phrase) || removeVietnameseTones(d.barcode || "").includes(phrase);
       });
       if (codeMatches.length > 0) return codeMatches;
 
-      // 3. Fallback: Bắt buộc TẤT CẢ các từ tìm kiếm phải cùng xuất hiện
+      // 3. Fallback: all words must match
       return allDevices.filter(d => {
-        const full = removeVietnameseTones(`${d.type} ${d.brand} ${d.barcode} ${d.hostname} ${d.user_name} ${d.department} ${d.cpu}`);
+        const full = removeVietnameseTones(`${d.type} ${d.brand} ${d.barcode} ${d.hostname} ${d.user_name} ${d.department}`);
         return words.every(w => full.includes(w));
       });
     }
@@ -730,11 +644,8 @@
 
       let lower = query.toLowerCase();
       let reply = "";
-      
-      if (lower.includes("chua join") || lower.includes("chưa join") || lower.includes("dc") || lower.includes("domain")) {
-        let unjoined = allDevices.filter(d => String(d.join_dc || "").trim() !== "1");
-        reply = `🛡️ **Báo cáo Join Domain (DC):** Hiện có **${unjoined.length} thiết bị** chưa join DC (chiếm ${((unjoined.length/allDevices.length)*100).toFixed(1)}%). Cần kiểm tra rà soát bảo mật.`;
-      } else if (lower.includes("phong ban") || lower.includes("phòng ban") || lower.includes("don vi") || lower.includes("đơn vị")) {
+
+      if (lower.includes("phong ban") || lower.includes("phòng ban") || lower.includes("don vi") || lower.includes("đơn vị")) {
         let map = {};
         allDevices.forEach(d => { let dep = d.department || "Khác"; map[dep] = (map[dep] || 0) + 1; });
         let sorted = Object.entries(map).sort((a,b) => b[1] - a[1]).slice(0, 5);
@@ -742,49 +653,39 @@
       } else if (lower.includes("pc") || lower.includes("laptop") || lower.includes("loai may") || lower.includes("loại máy")) {
         let pc = allDevices.filter(d => (d.type || "").toLowerCase().includes("pc")).length;
         let lap = allDevices.filter(d => (d.type || "").toLowerCase().includes("lap")).length;
-        let ipad = allDevices.filter(d => (d.type || "").toLowerCase().includes("ipad")).length;
-        reply = `💻 **Cơ cấu loại thiết bị:**\n- Desktop (PC): **${pc} máy**\n- Laptop: **${lap} máy**\n- iPad / Tablet: **${ipad} máy**`;
+        reply = `💻 **Cơ cấu thiết bị (Cột 4):**\n- Desktop (PC): **${pc} máy**\n- Laptop / Di động: **${lap} máy**`;
       } else {
-        const found = searchDevicesLocal(query);
+        const found = searchExact(query);
         if (found.length > 0) {
-          reply = `🔍 **Tìm thấy ${found.length} thiết bị phù hợp:**\n\n` + found.map((d, i) => {
-            return `**${i+1}. ${d.user_name || 'Chưa gán'}** - ${d.department || 'N/A'}\n• **Loại máy:** ${d.type} ${d.brand}\n• **Tên máy:** <code>${d.hostname || 'N/A'}</code> (Mã vạch: <code>${d.barcode || 'N/A'}</code>)\n• **Cấu hình:** ${d.cpu || 'N/A'} • RAM ${d.ram || '4'}GB\n• **Join DC:** ${String(d.join_dc).trim() === '1' ? '✅ Đã Join' : '⚠️ Chưa Join'}`;
+          reply = `🔍 **Tìm thấy ${found.length} thiết bị:**\n\n` + found.slice(0, 3).map((d, i) => {
+            return `**${i+1}. ${d.user_name || 'Chưa gán'}** - ${d.department || 'N/A'}\n• **Loại máy (4):** ${d.type} ${d.brand}\n• **Mã vạch (7):** <code>${d.barcode || 'N/A'}</code>\n• **Tên máy DC (18):** <code>${d.hostname || 'N/A'}</code>\n• **Tầng/Khu (10):** ${d.location || 'N/A'}\n• **Tình trạng (22):** ${d.cpu || 'Đang sử dụng'}`;
           }).join('\n\n');
 
-          // Filter table with clean search keyword
-          const qClean = removeVietnameseTones(query).split(/\s+/).filter(w => !['tim', 'kiem', 'xai', 'dung', 'sai', 'may', 'gi', 'thiet', 'bi', 'cho', 'hoi', 'la', 'ai', 'nao', 'o', 'phong', 'ban', 'ten', 'nguoi'].includes(w)).join(' ');
-          document.getElementById("searchInput").value = qClean;
+          // Auto filter table
+          const cleanQ = removeVietnameseTones(query).split(/\s+/).filter(w => !['tim', 'kiem', 'xai', 'dung', 'sai', 'may', 'gi', 'thiet', 'bi', 'cho', 'hoi', 'la', 'ai', 'nao', 'o', 'phong', 'ban', 'ten', 'nguoi'].includes(w)).join(' ');
+          document.getElementById("searchInput").value = cleanQ;
           renderTable();
         } else {
-          reply = `🔍 Không tìm thấy thông tin thiết bị nào khớp với từ khóa "${query}". Anh thử kiểm tra lại họ tên hoặc gõ mã vạch xem nhé!`;
+          reply = `🔍 Không tìm thấy thông tin thiết bị nào khớp với từ khóa "${query}". Anh thử kiểm tra lại họ tên hoặc mã vạch nhé!`;
         }
       }
       appendChatMessage("ai", reply);
     }
 
     function exportCSV() {
-      let csv = '\uFEFFID,Loai,Hieu,MaVach,TenMay,NguoiDung,DonVi,ViTri,CPU,RAM,JoinDC\n';
-      allDevices.forEach(d => {
-        let row = [d.id, d.type, d.brand, d.barcode, d.hostname, d.user_name, d.department, d.location, d.cpu, d.ram, d.join_dc].map(v => '"' + (v || "").toString().replace(/"/g, '""') + '"');
+      let csv = '\uFEFFSTT,LoaiMay_4,Hieu_5,MaVach_7,PhongBan_8,TangKhu_10,TenMayDC_18,NguoiDung_20,TinhTrang_22\n';
+      allDevices.forEach((d, i) => {
+        let row = [i+1, d.type, d.brand, d.barcode, d.department, d.location, d.hostname, d.user_name, d.cpu].map(v => '"' + (v || "").toString().replace(/"/g, '""') + '"');
         csv += row.join(",") + "\n";
       });
       let blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
       let url = URL.createObjectURL(blob);
       let a = document.createElement("a");
       a.href = url;
-      a.download = "Danh_Sach_May_Tinh_Supabase.csv";
+      a.download = "Danh_Sach_Thiet_Bi_Chuan_Cot.csv";
       a.click();
     }
 
-    if (window.aicw && typeof window.aicw.on === 'function') {
-      window.aicw.on('data', function(d) {
-        if (d && d.chatReply) {
-          appendChatMessage('ai', d.chatReply);
-        }
-      });
-    }
-
-    // Run auth check on init
     checkAuth();
   </script>
 </body>
