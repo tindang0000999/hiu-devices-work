@@ -1,5 +1,45 @@
-<div class="ui-app">
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <title>Quản Lý Máy Tính Công Việc - Supabase Cloud</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
+    :root {
+      --ui-bg: #f8fafc;
+      --ui-surface: #ffffff;
+      --ui-fg: #0f172a;
+      --ui-muted-fg: #64748b;
+      --ui-border: #e2e8f0;
+      --ui-accent: #2563eb;
+      --ui-accent-hover: #1d4ed8;
+      --ui-card: #ffffff;
+      --ui-warn: #f59e0b;
+      --ui-good: #10b981;
+      --ui-bad: #ef4444;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background: var(--ui-bg); color: var(--ui-fg); padding: 16px; }
+
+    /* Login Screen */
+    .auth-overlay { position: fixed; inset: 0; background: #0f172a; display: flex; align-items: center; justify-content: center; z-index: 9999; padding: 16px; }
+    .auth-card { background: var(--ui-surface); border-radius: 16px; width: 100%; max-width: 420px; padding: 32px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); border: 1px solid var(--ui-border); }
+    .auth-title { font-size: 22px; font-weight: 700; margin-bottom: 6px; text-align: center; }
+    .auth-subtitle { font-size: 13px; color: var(--ui-muted-fg); margin-bottom: 24px; text-align: center; line-height: 1.4; }
+    .auth-field { margin-bottom: 16px; }
+    .auth-field label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+    .auth-input { width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--ui-border); font-size: 14px; outline: none; }
+    .auth-input:focus { border-color: var(--ui-accent); ring: 2px rgba(37,99,235,0.2); }
+    .auth-btn { width: 100%; padding: 12px; border-radius: 8px; background: var(--ui-accent); color: white; border: none; font-weight: 600; font-size: 14px; cursor: pointer; transition: background 0.2s; }
+    .auth-btn:hover { background: var(--ui-accent-hover); }
+    .auth-tabs { display: flex; border-bottom: 1px solid var(--ui-border); margin-bottom: 20px; }
+    .auth-tab { flex: 1; text-align: center; padding: 10px; font-size: 14px; font-weight: 600; cursor: pointer; color: var(--ui-muted-fg); border-bottom: 2px solid transparent; }
+    .auth-tab.active { color: var(--ui-accent); border-color: var(--ui-accent); }
+    .auth-alert { padding: 10px 12px; border-radius: 8px; font-size: 13px; margin-bottom: 16px; display: none; }
+    .auth-alert.error { background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; display: block; }
+    .auth-alert.success { background: #dcfce7; color: #16a34a; border: 1px solid #86efac; display: block; }
+
+    /* Badges */
     .device-badge { display: inline-block; padding: 2px 8px; border-radius: 9999px; font-size: 11px; font-weight: 600; }
     .badge-pc { background: rgba(59, 130, 246, 0.15); color: #2563eb; }
     .badge-laptop { background: rgba(16, 185, 129, 0.15); color: #059669; }
@@ -7,7 +47,7 @@
     .badge-dc-yes { background: rgba(16, 185, 129, 0.15); color: #059669; }
     .badge-dc-no { background: rgba(239, 68, 68, 0.15); color: #dc2626; font-weight: bold; }
     
-    /* Layout split: Main table and AI Chat Panel */
+    /* Layout */
     .app-main-layout { display: flex; gap: 16px; align-items: flex-start; }
     .table-section { flex: 1; min-width: 0; }
     .chat-section { width: 340px; flex-shrink: 0; display: flex; flex-direction: column; height: 680px; }
@@ -19,175 +59,230 @@
     /* Modal styling */
     .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 16px; }
     .modal-backdrop.active { display: flex; }
-    .modal-box { background: var(--ui-surface, #fff); border-radius: 12px; width: 100%; max-width: 540px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); border: 1px solid var(--ui-border, #e2e8f0); overflow: hidden; animation: popIn 0.2s ease-out; }
+    .modal-box { background: var(--ui-surface); border-radius: 12px; width: 100%; max-width: 540px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); border: 1px solid var(--ui-border); overflow: hidden; animation: popIn 0.2s ease-out; }
     @keyframes popIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
     
     /* Chat styling */
     .chat-messages { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; font-size: 13px; }
     .chat-msg { max-width: 85%; padding: 8px 12px; border-radius: 10px; line-height: 1.4; }
-    .chat-msg.user { align-self: flex-end; background: var(--ui-accent, #2563eb); color: #fff; border-bottom-right-radius: 2px; }
-    .chat-msg.ai { align-self: flex-start; background: var(--ui-card, #f8fafc); border: 1px solid var(--ui-border, #e2e8f0); color: var(--ui-fg, #1e293b); border-bottom-left-radius: 2px; }
-    .quick-chip { font-size: 11px; padding: 4px 8px; border-radius: 6px; border: 1px solid var(--ui-border, #cbd5e1); background: var(--ui-surface, #fff); cursor: pointer; white-space: nowrap; }
-    .quick-chip:hover { border-color: var(--ui-accent, #2563eb); color: var(--ui-accent, #2563eb); }
-  </style>
-
-  <!-- Header -->
-  <header class="ui-header" style="margin-bottom: 16px;">
-    <div>
-      <div class="ui-eyebrow">HIU • PHÒNG CÔNG NGHỆ THÔNG TIN</div>
-      <h1 class="ui-title">💻 Quản Lý Máy Tính Công Việc (11_2025)</h1>
-      <p class="ui-subtitle">Dữ liệu từ <code>Kiem Ke-DBP-DSEN-PCLAP-10-2023.xlsx</code> • <span id="headerTotalBadge">547 thiết bị</span></p>
-    </div>
-    <div style="display: flex; gap: 8px; align-items: center;">
-      <button class="ui-btn secondary sm" onclick="exportCSV()">📥 Xuất CSV</button>
-      <button class="ui-btn outline sm" onclick="resetFilters()">🔄 Đặt lại bộ lọc</button>
-    </div>
-  </header>
-
-  <!-- KPI Cards -->
-  <div class="ui-grid cols-4" style="margin-bottom: 16px;">
-    <div class="ui-card ui-kpi">
-      <div class="ui-kpi-label">Tổng Thiết Bị</div>
-      <div class="ui-kpi-value" id="kpiTotal">0</div>
-      <div class="ui-kpi-delta up">Máy công việc</div>
-    </div>
-    <div class="ui-card ui-kpi">
-      <div class="ui-kpi-label">PC Để Bàn</div>
-      <div class="ui-kpi-value" id="kpiPC" style="color: #2563eb;">0</div>
-      <div class="ui-kpi-delta good">Desktop</div>
-    </div>
-    <div class="ui-card ui-kpi">
-      <div class="ui-kpi-label">Laptop / Di Động</div>
-      <div class="ui-kpi-value" id="kpiLaptop" style="color: #059669;">0</div>
-      <div class="ui-kpi-delta accent">Xách tay</div>
-    </div>
-    <div class="ui-card ui-kpi">
-      <div class="ui-kpi-label">Chưa Join DC</div>
-      <div class="ui-kpi-value" id="kpiWarning" style="color: #dc2626;">0</div>
-      <div class="ui-kpi-delta warn">Cần cấu hình</div>
-    </div>
-  </div>
-
-  <!-- Main Split Layout -->
-  <div class="app-main-layout">
+    .chat-msg.user { align-self: flex-end; background: var(--ui-accent); color: #fff; border-bottom-right-radius: 2px; }
+    .chat-msg.ai { align-self: flex-start; background: var(--ui-bg); border: 1px solid var(--ui-border); color: var(--ui-fg); border-bottom-left-radius: 2px; }
+    .quick-chip { font-size: 11px; padding: 4px 8px; border-radius: 6px; border: 1px solid var(--ui-border); background: var(--ui-surface); cursor: pointer; white-space: nowrap; }
+    .quick-chip:hover { border-color: var(--ui-accent); color: var(--ui-accent); }
     
-    <!-- Left / Center: Table Section -->
-    <div class="table-section">
-      <!-- Search & Filters -->
-      <div class="ui-card" style="margin-bottom: 12px; padding: 12px;">
-        <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
-          <div style="flex: 2; min-width: 200px;">
-            <input type="text" id="searchInput" class="ui-input" placeholder="🔍 Tìm tên máy, người dùng, mã vạch..." oninput="renderTable()">
-          </div>
-          <div style="flex: 1; min-width: 120px;">
-            <select id="typeFilter" class="ui-select" onchange="renderTable()">
-              <option value="">-- Tất cả loại --</option>
-              <option value="PC">PC</option>
-              <option value="Laptop">Laptop</option>
-              <option value="Ipad">Ipad</option>
-            </select>
-          </div>
-          <div style="flex: 1; min-width: 120px;">
-            <select id="brandFilter" class="ui-select" onchange="renderTable()">
-              <option value="">-- Thương hiệu --</option>
-              <option value="Lenovo">Lenovo</option>
-              <option value="Dell">Dell</option>
-              <option value="HP">HP</option>
-              <option value="Apple">Apple / Mac</option>
-            </select>
-          </div>
-          <div style="flex: 1.5; min-width: 150px;">
-            <select id="deptFilter" class="ui-select" onchange="renderTable()">
-              <option value="">-- Tất cả phòng ban --</option>
-            </select>
-          </div>
-          <div style="flex: 1; min-width: 120px;">
-            <select id="dcFilter" class="ui-select" onchange="renderTable()">
-              <option value="">-- Trạng thái DC --</option>
-              <option value="joined">Đã Join DC</option>
-              <option value="not_joined">Chưa Join DC</option>
-            </select>
-          </div>
-        </div>
+    /* App controls */
+    .ui-btn { padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; border: 1px solid transparent; }
+    .ui-btn.primary { background: var(--ui-accent); color: white; }
+    .ui-btn.secondary { background: #f1f5f9; color: #334155; }
+    .ui-btn.outline { background: transparent; border-color: var(--ui-border); color: var(--ui-fg); }
+    .ui-btn.ghost { background: transparent; color: var(--ui-muted-fg); }
+    .ui-btn.ghost:hover { background: #f1f5f9; }
+    .ui-btn.sm { padding: 4px 8px; font-size: 12px; }
+    .ui-input, .ui-select { padding: 8px 12px; border-radius: 6px; border: 1px solid var(--ui-border); font-size: 13px; width: 100%; outline: none; }
+    .ui-card { background: var(--ui-card); border-radius: 12px; border: 1px solid var(--ui-border); padding: 16px; }
+    .ui-grid { display: grid; gap: 16px; }
+    .ui-grid.cols-4 { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+    .ui-kpi { display: flex; flex-direction: column; gap: 4px; }
+    .ui-kpi-label { font-size: 12px; color: var(--ui-muted-fg); font-weight: 600; text-transform: uppercase; }
+    .ui-kpi-value { font-size: 26px; font-weight: 700; }
+    .ui-kpi-delta { font-size: 11px; font-weight: 500; }
+    .ui-table { width: 100%; border-collapse: collapse; text-align: left; }
+    .ui-table th { background: #f8fafc; padding: 10px 12px; font-weight: 600; border-bottom: 1px solid var(--ui-border); color: var(--ui-muted-fg); }
+    .ui-table td { padding: 10px 12px; border-bottom: 1px solid var(--ui-border); }
+    .ui-table tbody tr:hover { background: #f8fafc; }
+  </style>
+</head>
+<body>
+
+  <!-- Auth Screen (Required before entering dashboard) -->
+  <div class="auth-overlay" id="authOverlay">
+    <div class="auth-card">
+      <div style="font-size: 40px; text-align: center; margin-bottom: 8px;">🔐</div>
+      <h2 class="auth-title">Đăng Nhập Hệ Thống</h2>
+      <p class="auth-subtitle">Cơ sở dữ liệu máy tính kiểm kê HIU<br>Bảo vệ bằng <strong>Supabase Cloud Database</strong></p>
+
+      <div class="auth-tabs">
+        <div class="auth-tab active" id="tabSignIn" onclick="setAuthMode('signin')">Đăng nhập</div>
+        <div class="auth-tab" id="tabSignUp" onclick="setAuthMode('signup')">Đăng ký mới</div>
       </div>
 
-      <!-- Table View -->
-      <div class="ui-card" style="padding: 0; overflow: hidden;">
-        <div class="ui-table-wrap" style="max-height: 480px; overflow-y: auto;">
-          <table class="ui-table" style="font-size: 13px;">
-            <thead>
-              <tr>
-                <th style="width: 40px; text-align: center;">#</th>
-                <th>Loại</th>
-                <th>Hiệu</th>
-                <th>Mã Vạch</th>
-                <th>Tên Máy</th>
-                <th>Người Sử Dụng</th>
-                <th>Phòng Ban</th>
-                <th>Cấu Hình (CPU / RAM)</th>
-                <th>Join DC</th>
-                <th style="text-align: center;">Sửa</th>
-              </tr>
-            </thead>
-            <tbody id="tableBody"></tbody>
-          </table>
-        </div>
-        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; border-top: 1px solid var(--ui-border, #e2e8f0); font-size: 13px; color: var(--ui-muted-fg, #64748b);">
-          <span id="recordCount">Đang tải...</span>
-          <div style="display: flex; gap: 8px; align-items: center;">
-            <button class="ui-btn ghost sm" onclick="prevPage()">◀</button>
-            <span id="pageInfo">Trang 1 / 1</span>
-            <button class="ui-btn ghost sm" onclick="nextPage()">▶</button>
-          </div>
-        </div>
+      <div class="auth-alert" id="authAlert"></div>
+
+      <div class="auth-field">
+        <label>Email tài khoản</label>
+        <input type="email" id="authEmail" class="auth-input" placeholder="dangtin107@gmail.com" value="dangtin107@gmail.com">
+      </div>
+
+      <div class="auth-field">
+        <label>Mật khẩu</label>
+        <input type="password" id="authPassword" class="auth-input" placeholder="••••••••" onkeydown="if(event.key==='Enter') handleAuthSubmit()">
+      </div>
+
+      <button class="auth-btn" id="authSubmitBtn" onclick="handleAuthSubmit()">Vào Dashboard</button>
+      <div style="text-align: center; margin-top: 16px; font-size: 12px; color: var(--ui-muted-fg);">
+        Kết nối: <code>pvbpqhoiraacrpyvjiph.supabase.co</code>
       </div>
     </div>
-
-    <!-- Right: Integrated AI Assistant Panel -->
-    <div class="chat-section ui-card" style="padding: 0; overflow: hidden;">
-      <div style="padding: 10px 14px; border-bottom: 1px solid var(--ui-border, #e2e8f0); background: rgba(37, 99, 235, 0.04); display: flex; align-items: center; justify-content: space-between;">
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <span style="font-size: 16px;">🤖</span>
-          <strong>Trợ Lý Excel AI</strong>
-        </div>
-        <span class="device-badge badge-laptop" style="font-size: 10px;">Sẵn sàng</span>
-      </div>
-
-      <!-- Suggested prompts chips -->
-      <div style="padding: 8px 10px; border-bottom: 1px solid var(--ui-border, #f1f5f9); display: flex; gap: 6px; overflow-x: auto;">
-        <div class="quick-chip" onclick="askQuickPrompt('Có bao nhiêu máy tính chưa join domain DC?')">🛡️ Chưa Join DC</div>
-        <div class="quick-chip" onclick="askQuickPrompt('Phòng ban nào đang có nhiều máy tính nhất?')">🏢 Top phòng ban</div>
-        <div class="quick-chip" onclick="askQuickPrompt('Thống kê số lượng theo loại máy PC vs Laptop')">💻 PC vs Laptop</div>
-      </div>
-
-      <!-- Chat History Stream -->
-      <div class="chat-messages" id="chatStream">
-        <div class="chat-msg ai">
-          Chào anh! Em là Trợ lý phân tích dữ liệu 547 máy tính kiểm kê. Anh có thể hỏi bất kỳ câu hỏi nào về danh sách thiết bị hoặc bấm nút gợi ý phía trên nhé!
-        </div>
-      </div>
-
-      <!-- Chat Input Field -->
-      <div style="padding: 10px; border-top: 1px solid var(--ui-border, #e2e8f0); display: flex; gap: 8px; background: var(--ui-surface, #fff);">
-        <input type="text" id="chatInput" class="ui-input" style="font-size: 13px;" placeholder="Hỏi AI về danh sách máy tính..." onkeydown="if(event.key==='Enter') sendChatMessage()">
-        <button class="ui-btn primary sm" onclick="sendChatMessage()">Gửi</button>
-      </div>
-    </div>
-
   </div>
 
-  <!-- Modal: Edit Device with Dropdown -->
+  <!-- Dashboard Container (Secured) -->
+  <div id="mainDashboard">
+    <!-- Header -->
+    <header style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+      <div>
+        <div style="font-size: 11px; font-weight: 700; color: var(--ui-accent); letter-spacing: 0.5px;">HIU • SUPABASE CLOUD DATABASE</div>
+        <h1 style="font-size: 22px; font-weight: 700; margin: 2px 0;">💻 Quản Lý Máy Tính Công Việc (547 Thiết Bị)</h1>
+        <p style="font-size: 13px; color: var(--ui-muted-fg);">Đang kết nối: <span class="device-badge badge-laptop" id="cloudStatus">Cloud Live</span> • Người dùng: <strong id="currentUserEmail">dangtin107@gmail.com</strong></p>
+      </div>
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <button class="ui-btn secondary sm" onclick="loadFromSupabase()">🔄 Tải lại dữ liệu</button>
+        <button class="ui-btn secondary sm" onclick="exportCSV()">📥 Xuất CSV</button>
+        <button class="ui-btn outline sm" style="color: var(--ui-bad); border-color: #fca5a5;" onclick="handleSignOut()">🚪 Đăng xuất</button>
+      </div>
+    </header>
+
+    <!-- KPI Cards -->
+    <div class="ui-grid cols-4" style="margin-bottom: 16px;">
+      <div class="ui-card ui-kpi">
+        <div class="ui-kpi-label">Tổng Thiết Bị Cloud</div>
+        <div class="ui-kpi-value" id="kpiTotal">0</div>
+        <div class="ui-kpi-delta" style="color: var(--ui-accent);">Supabase Postgres</div>
+      </div>
+      <div class="ui-card ui-kpi">
+        <div class="ui-kpi-label">PC Để Bàn</div>
+        <div class="ui-kpi-value" id="kpiPC" style="color: #2563eb;">0</div>
+        <div class="ui-kpi-delta" style="color: #2563eb;">Desktop</div>
+      </div>
+      <div class="ui-card ui-kpi">
+        <div class="ui-kpi-label">Laptop / Di Động</div>
+        <div class="ui-kpi-value" id="kpiLaptop" style="color: #059669;">0</div>
+        <div class="ui-kpi-delta" style="color: #059669;">Xách tay / Tablet</div>
+      </div>
+      <div class="ui-card ui-kpi">
+        <div class="ui-kpi-label">Chưa Join DC</div>
+        <div class="ui-kpi-value" id="kpiWarning" style="color: #dc2626;">0</div>
+        <div class="ui-kpi-delta" style="color: #dc2626;">Cần cấu hình bảo mật</div>
+      </div>
+    </div>
+
+    <!-- Main Split Layout -->
+    <div class="app-main-layout">
+      <!-- Left: Table Section -->
+      <div class="table-section">
+        <!-- Search & Filter Controls -->
+        <div class="ui-card" style="margin-bottom: 12px; padding: 12px;">
+          <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
+            <div style="flex: 2; min-width: 200px;">
+              <input type="text" id="searchInput" class="ui-input" placeholder="🔍 Tìm tên máy, người dùng, mã vạch..." oninput="renderTable()">
+            </div>
+            <div style="flex: 1; min-width: 120px;">
+              <select id="typeFilter" class="ui-select" onchange="renderTable()">
+                <option value="">-- Tất cả loại --</option>
+                <option value="PC">PC</option>
+                <option value="Laptop">Laptop</option>
+                <option value="Ipad">Ipad</option>
+              </select>
+            </div>
+            <div style="flex: 1; min-width: 120px;">
+              <select id="brandFilter" class="ui-select" onchange="renderTable()">
+                <option value="">-- Thương hiệu --</option>
+                <option value="Lenovo">Lenovo</option>
+                <option value="Dell">Dell</option>
+                <option value="HP">HP</option>
+                <option value="Apple">Apple / Mac</option>
+              </select>
+            </div>
+            <div style="flex: 1.5; min-width: 150px;">
+              <select id="deptFilter" class="ui-select" onchange="renderTable()">
+                <option value="">-- Tất cả phòng ban --</option>
+              </select>
+            </div>
+            <div style="flex: 1; min-width: 120px;">
+              <select id="dcFilter" class="ui-select" onchange="renderTable()">
+                <option value="">-- Trạng thái DC --</option>
+                <option value="joined">Đã Join DC</option>
+                <option value="not_joined">Chưa Join DC</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Table View -->
+        <div class="ui-card" style="padding: 0; overflow: hidden;">
+          <div style="max-height: 480px; overflow-y: auto;">
+            <table class="ui-table" style="font-size: 13px;">
+              <thead>
+                <tr>
+                  <th style="width: 40px; text-align: center;">#</th>
+                  <th>Loại</th>
+                  <th>Hiệu</th>
+                  <th>Mã Vạch</th>
+                  <th>Tên Máy</th>
+                  <th>Người Sử Dụng</th>
+                  <th>Phòng Ban</th>
+                  <th>Cấu Hình (CPU / RAM)</th>
+                  <th>Join DC</th>
+                  <th style="text-align: center;">Sửa Cloud</th>
+                </tr>
+              </thead>
+              <tbody id="tableBody"></tbody>
+            </table>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; border-top: 1px solid var(--ui-border); font-size: 13px; color: var(--ui-muted-fg);">
+            <span id="recordCount">Đang đồng bộ với Supabase...</span>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <button class="ui-btn ghost sm" onclick="prevPage()">◀</button>
+              <span id="pageInfo">Trang 1 / 1</span>
+              <button class="ui-btn ghost sm" onclick="nextPage()">▶</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: AI Assistant Panel -->
+      <div class="chat-section ui-card" style="padding: 0; overflow: hidden;">
+        <div style="padding: 10px 14px; border-bottom: 1px solid var(--ui-border); background: rgba(37, 99, 235, 0.04); display: flex; align-items: center; justify-content: space-between;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 16px;">🤖</span>
+            <strong>Trợ Lý Supabase AI</strong>
+          </div>
+          <span class="device-badge badge-laptop" style="font-size: 10px;">Postgres Sync</span>
+        </div>
+
+        <div style="padding: 8px 10px; border-bottom: 1px solid #f1f5f9; display: flex; gap: 6px; overflow-x: auto;">
+          <div class="quick-chip" onclick="askQuickPrompt('Có bao nhiêu máy tính chưa join domain DC?')">🛡️ Chưa Join DC</div>
+          <div class="quick-chip" onclick="askQuickPrompt('Phòng ban nào đang có nhiều máy tính nhất?')">🏢 Top phòng ban</div>
+          <div class="quick-chip" onclick="askQuickPrompt('Thống kê số lượng theo loại máy PC vs Laptop')">💻 PC vs Laptop</div>
+        </div>
+
+        <div class="chat-messages" id="chatStream">
+          <div class="chat-msg ai">
+            Chào anh! Dữ liệu 547 thiết bị hiện đã được bảo vệ trên Supabase Cloud. Em có thể hỗ trợ anh truy vấn, phân tích số liệu hoặc kiểm tra thông tin bất kỳ máy nào!
+          </div>
+        </div>
+
+        <div style="padding: 10px; border-top: 1px solid var(--ui-border); display: flex; gap: 8px; background: var(--ui-surface);">
+          <input type="text" id="chatInput" class="ui-input" style="font-size: 13px;" placeholder="Hỏi AI về cơ sở dữ liệu Supabase..." onkeydown="if(event.key==='Enter') sendChatMessage()">
+          <button class="ui-btn primary sm" onclick="sendChatMessage()">Gửi</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Edit Device (Sync to Supabase Cloud) -->
   <div class="modal-backdrop" id="editModal">
     <div class="modal-box">
-      <div style="padding: 14px 18px; border-bottom: 1px solid var(--ui-border, #e2e8f0); display: flex; justify-content: space-between; align-items: center;">
-        <h3 style="margin: 0; font-size: 16px;">✏️ Chỉnh Sửa Thông Tin Thiết Bị</h3>
+      <div style="padding: 14px 18px; border-bottom: 1px solid var(--ui-border); display: flex; justify-content: space-between; align-items: center;">
+        <h3 style="margin: 0; font-size: 16px;">✏️ Chỉnh Sửa Thiết Bị (Supabase Cloud)</h3>
         <button class="ui-btn ghost sm" onclick="closeEditModal()">✕</button>
       </div>
       <div style="padding: 16px; display: flex; flex-direction: column; gap: 12px; font-size: 13px;">
+        <input type="hidden" id="editDeviceId">
         <input type="hidden" id="editIndex">
+
         <div style="display: flex; gap: 12px;">
           <div style="flex: 1;">
-            <label class="ui-label">Loại máy</label>
+            <label style="font-weight: 600; display: block; margin-bottom: 4px;">Loại máy</label>
             <select id="editType" class="ui-select">
               <option value="PC">PC</option>
               <option value="Laptop">Laptop</option>
@@ -196,7 +291,7 @@
             </select>
           </div>
           <div style="flex: 1;">
-            <label class="ui-label">Thương hiệu / Hiệu</label>
+            <label style="font-weight: 600; display: block; margin-bottom: 4px;">Thương hiệu</label>
             <select id="editBrand" class="ui-select">
               <option value="Dell">Dell</option>
               <option value="Lenovo">Lenovo</option>
@@ -211,33 +306,33 @@
 
         <div style="display: flex; gap: 12px;">
           <div style="flex: 1;">
-            <label class="ui-label">Mã vạch tài sản</label>
+            <label style="font-weight: 600; display: block; margin-bottom: 4px;">Mã vạch</label>
             <input type="text" id="editBarcode" class="ui-input">
           </div>
           <div style="flex: 1;">
-            <label class="ui-label">Tên máy (Hostname)</label>
+            <label style="font-weight: 600; display: block; margin-bottom: 4px;">Tên máy (Hostname)</label>
             <input type="text" id="editName" class="ui-input">
           </div>
         </div>
 
         <div style="display: flex; gap: 12px;">
           <div style="flex: 1;">
-            <label class="ui-label">Người sử dụng</label>
+            <label style="font-weight: 600; display: block; margin-bottom: 4px;">Người sử dụng</label>
             <input type="text" id="editUser" class="ui-input">
           </div>
           <div style="flex: 1;">
-            <label class="ui-label">Phòng ban / Đơn vị</label>
+            <label style="font-weight: 600; display: block; margin-bottom: 4px;">Phòng ban</label>
             <input type="text" id="editDept" class="ui-input">
           </div>
         </div>
 
         <div style="display: flex; gap: 12px;">
           <div style="flex: 2;">
-            <label class="ui-label">Cấu hình CPU</label>
+            <label style="font-weight: 600; display: block; margin-bottom: 4px;">Cấu hình CPU</label>
             <input type="text" id="editCPU" class="ui-input">
           </div>
           <div style="flex: 1;">
-            <label class="ui-label">RAM (GB)</label>
+            <label style="font-weight: 600; display: block; margin-bottom: 4px;">RAM (GB)</label>
             <select id="editRAM" class="ui-select">
               <option value="4">4 GB</option>
               <option value="8">8 GB</option>
@@ -249,7 +344,7 @@
         </div>
 
         <div>
-          <label class="ui-label">Trạng thái Join Domain (DC)</label>
+          <label style="font-weight: 600; display: block; margin-bottom: 4px;">Trạng thái Join Domain (DC)</label>
           <select id="editDC" class="ui-select">
             <option value="1">Đã Join DC (1)</option>
             <option value="0">Chưa Join DC (0 hoặc Trống)</option>
@@ -257,264 +352,369 @@
         </div>
       </div>
 
-      <div style="padding: 12px 18px; border-top: 1px solid var(--ui-border, #e2e8f0); background: var(--ui-card, #f8fafc); display: flex; justify-content: flex-end; gap: 8px;">
+      <div style="padding: 12px 18px; border-top: 1px solid var(--ui-border); background: var(--ui-bg); display: flex; justify-content: flex-end; gap: 8px;">
         <button class="ui-btn ghost sm" onclick="closeEditModal()">Hủy bỏ</button>
-        <button class="ui-btn primary sm" onclick="saveDeviceChanges()">💾 Lưu thay đổi</button>
+        <button class="ui-btn primary sm" id="btnSaveCloud" onclick="saveDeviceChanges()">💾 Lưu lên Cloud</button>
       </div>
     </div>
   </div>
 
-</div>
+  <script>
+    // Supabase Credentials
+    const SUPABASE_URL = "https://pvbpqhoiraacrpyvjiph.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB2YnBxaG9pcmFhY3JweXZqaXBoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE4OTM1MTIsImV4cCI6MjEwNzQ2OTUxMn0.HFfUjADJgYi4D5hjiPJS-7SpQVcq3nsjuelOXQ32mwo";
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-<script>
-// Loaded compact dataset: [type, brand, barcode, pc_name, user, dept, location, cpu, ram, join_dc]
-let allDevices = [["Ipad", "Ipad Pro", "C024-000565", "HIU_LINHPV", "Phạm Văn Lình", "Ban Giám Hiệu", "Phòng Hiệu trưởng", "Apple M1", "", ""], ["PC", "Lenovo", "C024-000750", "HIU_CUONGLK", "Lê Khắc Cường", "Ban Giám Hiệu", "Phòng Phó Hiệu trưởng", "Core i5 9400", "8", ""], ["Laptop", "Microsoft", "C024-000563", "HIU_QUYENTTT", "Trần Thúy Trâm Quyên", "Ban Giám Hiệu", "Phòng Phó Hiệu trưởng", "Surface Pro 7 i5", "8", ""], ["Laptop", "Macbook Pro", "C024-000564", "HIU_CUONGLK", "Lê Khắc Cường", "Ban Giám Hiệu", "Phòng Phó Hiệu trưởng", "Apple M1", "8", ""], ["Laptop", "Lenovo", "C024-000571", "", "Nguyễn Lê Anh Trung", "Ban Giám Hiệu", "Văn phòng", "AMD Ryzen™ 5 5600U", "8", ""], ["PC", "Lenovo", "C024-025218", "", "Nguyễn Thị Thu Thuỷ", "Ban Giám Hiệu", "Văn phòng", "Core i3-10105", "8", "X"], ["Laptop", "Lenovo", "C024-030063", "", "Lương Thị Kim Chi", "Ban Giám Hiệu", "Văn phòng", "AMD Ryzen™ 5 7535U", "8", ""], ["Laptop", "Lenovo", "C024-025196", "HIU_NGOCLTA", "Lương Thị Ánh Ngọc", "Khoa Khoa học Xã hội & Nhân văn", "Văn phòng bộ môn", "AMD Ryzen™ 5 5600U", "8", ""], ["Laptop", "Lenovo", "C024-000587", "HIU_THAINDL", "Nguyễn Đình Lê Thái", "Khoa Khoa học Xã hội & Nhân văn", "Văn phòng bộ môn", "Core i5 8265", "8", ""], ["PC", "Dell", "C024-000629", "HIU_CUONGPLM", "Hoàng Thành Lưu", "Khoa Khoa học Xã hội & Nhân văn", "Phòng Gym", "Core i3 8100", "8", ""], ["PC", "Dell", "C024-000672", "HIU_TRAMDTT", "Đỗ Thị Thu Trâm", "Khoa Khoa học Xã hội & Nhân văn", "Văn phòng bộ môn", "Core i3 8100", "8", ""], ["Laptop", "Lenovo", "C024-000568", "HIU_QUANGLV", "Lê Vinh Quang", "Hội Đồng Trường", "Văn phòng", "Core i5 8265", "8", ""], ["Laptop", "Lenovo", "C024-030065", "Trần Thị Liên Hương", "Nguyễn Thị Thùy Trang", "Hội Đồng Trường", "Văn phòng", "AMD Ryzen™ 5 7535U", "8", "x"], ["PC", "Dell", "C024-000697", "HIU_ANHDTQ", "Nguyễn Thị Phương Uyên", "Khoa Điều Dưỡng", "Văn phòng khoa", "Core i3 8100", "8", "x"], ["PC", "Dell", "C024-000698", "HIU_DUNGTQ", "Bùi Trần Thu Thảo", "Khoa Điều Dưỡng", "Văn phòng khoa", "Core i3 8100", "8", ""], ["PC", "Dell", "C024-000699", "HIU_HUYLH", "Lê Hồng Huy", "Khoa Điều Dưỡng", "Văn phòng khoa", "Core i3 8100", "8", ""], ["PC", "Dell", "C024-001265", "HIU_NHUNGPTM", "Phạm Thị Mỹ Nhung", "Khoa Điều Dưỡng", "Văn phòng khoa", "Core i3 8100", "8", ""], ["PC", "Dell", "C024-000694", "HIU_THUANTT", "Nguyễn Mạnh Khương", "Khoa Điều Dưỡng", "Văn phòng khoa", "Core i3 8100", "8", ""], ["PC", "Dell", "C024-000696", "HIU_VPKHOADD", "Giảng viên bộ môn", "Khoa Điều Dưỡng", "Văn phòng khoa", "Core i3 8100", "8", ""], ["PC", "Dell", "C024-000621", "HIU_LOCVD", "Nguyễn Thị Anh", "Khoa Điều Dưỡng", "Văn phòng khoa", "Core i3 8100", "8", ""], ["Laptop", "Lenovo", "C024-030062", "", "Trương Đình Cẩm", "Khoa Điều Dưỡng", "Văn phòng khoa", "AMD Ryzen™ 5 7535U", "8", "X"], ["PC", "Lenovo", "C024-025254", "HIU_NGANTT", "Nguyễn Thị Tuyết Nga", "Khoa Kinh tế - Quản trị", "Văn phòng khoa", "Core i3-10105", "8", ""], ["PC", "Lenovo", "C024-000785", "HIU_NGOCDTH", "Đào Thị Huyền Ngọc", "Khoa Kinh tế - Quản trị", "Văn phòng khoa", "Core i5 9400", "8", ""], ["Laptop", "Lenovo", "C024-025262", "HIU_HIEPPM", "Phước Minh Hiệp", "Khoa Kinh tế - Quản trị", "Văn phòng", "AMD Ryzen™ 5 5600U", "8", ""], ["PC", "HP", "C024-000777", "HIU_LINHVN", "Vũ Ngọc Linh", "Khoa Kinh tế - Quản trị", "Văn phòng khoa", "Core i5 4570", "8", ""], ["PC", "Dell", "C024-000650", "HIU_NGANMTT", "Mai Thị Trúc Ngân", "Khoa Kinh tế - Quản trị", "Văn phòng khoa", "Core i3 8100", "4", ""], ["PC", "HP", "C024-000778", "HIU_NHUNGTT", "Trịnh Thị Nhung", "Khoa Kinh tế - Quản trị", "Văn phòng khoa", "Core i5 4570", "8", ""], ["PC", "Dell", "C024-000630", "HIU_SUL_SV1", "Máy thực hành", "Khoa Kinh tế - Quản trị", "Sulyna", "Core i3 8100", "4", ""], ["PC", "Dell", "C024-000631", "HIU_SUL_SV2", "Máy thực hành", "Khoa Kinh tế - Quản trị", "Sulyna", "Core i3 8100", "4", ""], ["PC", "Dell", "C024-000682", "HIU_SUL_SV3", "Máy thực hành", "Khoa Kinh tế - Quản trị", "Sulyna", "Core i3 8100", "4", ""], ["PC", "Dell", "C024-000669", "HIU_SUL_SV4", "Máy thực hành", "Khoa Kinh tế - Quản trị", "Sulyna", "Core i3 8100", "4", ""], ["PC", "Dell", "C024-000675", "HIU_SUL_SV5", "Máy thực hành", "Khoa Kinh tế - Quản trị", "Sulyna", "Core i3 8100", "4", ""], ["PC", "Dell", "C024-000693", "HIU_LeTan04", "Máy thực hành", "Khoa Kinh tế - Quản trị", "Sulyna", "Core i3 8100", "4", ""], ["PC", "Dell", "C024-000695", "HIU_LeTan05", "Máy thực hành", "Khoa Kinh tế - Quản trị", "Sulyna", "Core i3 8100", "4", ""], ["PC", "Dell", "C024-000590", "HIU_LeTan06", "Máy thực hành", "Khoa Kinh tế - Quản trị", "Sulyna", "Core i3 8100", "4", ""], ["PC", "HP", "C024-000967", "HIU_TAIDA", "Đặng Anh Tài", "Khoa Kinh tế - Quản trị", "Sulyna", "Core i5 4590", "8", ""], ["PC", "HP", "C024-000941", "HIU_DONGPTH", "Phạm Thụy Hoài Đông", "Khoa Kỹ Thuật Công Nghệ", "Văn phòng khoa", "Core i5 4590", "8", ""], ["PC", "Dell", "C024-000608", "HIU_HAILT", "Lê Trọng Hải", "Khoa Kỹ Thuật Công Nghệ", "Văn phòng khoa", "Core i3 8100", "4", ""], ["PC", "HP", "C024-000940", "HIU_HANHLV", "Lê Văn Hạnh", "Phòng Công nghệ thông tin", "KHO", "Core i5 4590", "8", ""], ["PC", "Dell", "C024-000609", "HIU_LICHTD", "Thái Đức Lịch", "Khoa Kỹ Thuật Công Nghệ", "Văn phòng khoa", "Core i3 8100", "4", ""], ["PC", "Dell", "C024-000607", "HIU_SONNMT", "Nguyễn Minh Trúc Sơn", "Khoa Kỹ Thuật Công Nghệ", "Văn phòng khoa", "Core i3 8100", "4", ""], ["PC", "HP", "C024-000942", "HIU_VYTTT", "Ngô Văn Hoàng", "Khoa Kỹ Thuật Công Nghệ", "Văn phòng khoa", "Core i5 4590", "8", ""], ["PC", "Dell", "C024-000654", "", "", "Khoa Kỹ Thuật Công Nghệ", "Phòng thực hành", "Core i3 8100", "4", ""], ["PC", "Dell", "C024-000709", "", "", "Khoa Kỹ Thuật Công Nghệ", "Phòng thực hành", "Core i3 8100", "4", ""], ["PC", "Dell", "C024-000710", "", "", "Khoa Kỹ Thuật Công Nghệ", "Phòng thực hành", "Core i3 8100", "4", ""], ["PC", "Dell", "C024-000711", "", "", "Khoa Kỹ Thuật Công Nghệ", "Phòng thực hành", "Core i3 8100", "4", ""], ["PC", "Dell", "C024-000674", "", "", "Khoa Kỹ Thuật Công Nghệ", "Văn phòng khoa", "Core i3 8100", "4", ""], ["PC", "Dell", "C024-000706", "", "", "Khoa Kỹ Thuật Công Nghệ", "Văn phòng khoa", "Core i3 8100", "4", ""], ["PC", "Dell", "C024-000707", "C024-04-1TLV", "Lê Văn Thanh", "Khoa Kỹ Thuật Công Nghệ", "Văn phòng khoa", "Core i3 8100", "4", ""], ["PC", "Dell", "", "C024-04-1KHAITV", "Mai Huỳnh Hoa", "Phòng Hành chính - Nhân sự", "Văn phòng", "Core i3 8100", "4", ""], ["PC", "Lenovo", "C024-025119", "", "Đặng Thanh Tuấn", "Khoa Kỹ Thuật Công Nghệ", "Văn phòng khoa", "Core i3-10105", "8", "x"], ["PC", "HP", "C024-000775", "HIU_CUONGNTK", "Nguyễn Thị Kim Cương", "Khoa Khoa học Xã hội & Nhân văn", "Văn phòng khoa", "Core i5 4590", "8", ""], ["PC", "Dell", "C024-000670", "HIU_MANVNT", "Võ Nguyễn Tiến Mẫn", "Khoa Khoa học Xã hội & Nhân văn", "Văn phòng khoa", "Core i3 8100", "8", ""], ["PC", "HP", "C024-000784", "HIU_MYTTT", "Trương Thị Trà My", "Khoa Khoa học Xã hội & Nhân văn", "Văn phòng khoa", "Core i5 4590", "8", ""], ["Laptop", "Lenovo", "C024-025264", "HIU_SANHNH", "Nguyễn Hoài Sanh", "Khoa Khoa học Xã hội & Nhân văn", "Văn phòng", "AMD Ryzen™ 5 5600U", "8", ""], ["PC", "Lenovo", "C024-025255", "HIU_SANNV", "Nguyễn Văn San", "Khoa Khoa học Xã hội & Nhân văn", "Văn phòng khoa", "Core i3-10105", "8", ""], ["Laptop", "Lenovo", "C024-025261", "HIU_VINHTT", "Trần Thủy Vịnh", "Khoa Ngôn ngữ và văn hóa quốc tế", "Văn phòng khoa", "AMD Ryzen™ 5 5600U", "8", ""], ["PC", "OEM", "C024-000763", "HIU_ANHLT71", "", "Phòng Công nghệ thông tin", "KHO", "Core i5 2400", "8", ""], ["PC", "Dell", "C024-000643", "HIU_GV", "Giảng viên bộ môn", "Khoa Ngôn ngữ và văn hóa quốc tế", "Văn phòng khoa", "Core i3 8100", "4", ""], ["PC", "Dell", "C024-000642", "HIU_HIEUNT", "Nguyễn Trung Hiếu", "Khoa Ngôn ngữ và văn hóa quốc tế", "Văn phòng khoa", "Core i3 8100", "4", ""], ["PC", "HP", "C024-000762", "HIU_TAMLTT", "Lê Thị Thanh Tâm", "Khoa Ngôn ngữ và văn hóa quốc tế", "Văn phòng khoa", "Core i5 4590", "8", ""], ["PC", "OEM", "C024-000764", "HIU_TRITD", "Trần Đức Trị", "Khoa Ngôn ngữ và văn hóa quốc tế", "Văn phòng khoa", "Core i5 2400", "8", ""], ["Laptop", "Lenovo", "C024-025259", "HIU_HAUNH", "Tôn Nữ Linh Thoại", "Khoa Ngôn ngữ và văn hóa quốc tế", "Văn phòng khoa", "AMD Ryzen™ 5 5600U", "8", "x"], ["PC", "Lenovo", "C024-025223", "HIU_XQ2", "Giảng viên", "Khoa Răng Hàm Mặt", "Phòng chụp X quang", "Core i3-10105", "8", ""], ["PC", "Lenovo", "", "HIU_XQ1", "Giảng viên", "Khoa Răng Hàm Mặt", "Phòng chụp X quang", "Core i5 9400", "8", ""], ["PC", "Dell", "C024-000684", "HIU_HAUHP", "Hoàng Phương Hậu", "Khoa Răng Hàm Mặt", "Văn phòng khoa", "Core i3 8100", "8", ""], ["PC", "Dell", "C024-000659", "HIU_HUNGDN2", "Dương Ngọc Hùng", "Khoa Răng Hàm Mặt", "Văn phòng", "Core i3 8100", "8", ""], ["PC", "HP", "C024-001239", "HIU_MAIHT", "Hoàng Thị Mai", "Khoa Răng Hàm Mặt", "PTH. Tiền lâm sàng", "Core i5 4570", "8", ""], ["PC", "Dell", "C024-000683", "HIU_VANLT1", "Lê Thị Vân", "Khoa Răng Hàm Mặt", "Văn phòng khoa", "Core i3 8100", "8", ""], ["PC", "Dell", "C024-000660", "HIU_QUYENTTT", "Trịnh Thị Tố Quyên", "Khoa Răng Hàm Mặt", "Văn phòng", "Core i3 8100", "8", ""], ["Laptop", "Lenovo", "C024-025192", "HIU_LANHLD", "Lê Đức Lánh", "Khoa Răng Hàm Mặt", "Văn phòng khoa", "AMD Ryzen™ 5 5600U", "8", ""], ["Laptop", "ASUS", "C024-000572", "HIU_LapRHM1", "Giảng viên bộ môn", "Khoa Răng Hàm Mặt", "Văn phòng khoa", "Core i3-4005U", "4", ""], ["Laptop", "ASUS", "C024-000573", "HIU_LapRHM2", "Giảng viên bộ môn", "Khoa Răng Hàm Mặt", "Văn phòng khoa", "Core i3-4005U", "4", ""], ["Laptop", "ASUS", "C024-000574", "HIU_LapRHM3", "Giảng viên bộ môn", "Khoa Răng Hàm Mặt", "Văn phòng khoa", "Core i3-4005U", "4", ""], ["PC", "HP", "C024-000934", "HIU_PHONGHT", "Vũ Sơn", "Khoa Y", "Văn phòng", "Core i5 4590", "8", ""], ["PC", "HP", "C024-000779", "HIU_NGADTP", "Nguyễn Hông Yến Lâm", "Khoa Y", "Văn phòng khoa", "Core i5 4590", "8", "x"], ["PC", "Dell", "C024-000671", "C024-14-BMSHDT1", "Máy giảng viên", "Khoa Y", "Phòng 10.2", "Core i3 8100", "8", ""], ["PC", "Dell", "C024-000611", "HIU_CUONGNTK", "Nguyễn Cường", "Khoa Y", "Văn phòng khoa", "Core i3 8100", "4", ""], ["PC", "Dell", "C024-000596", "HIU_DATTLT", "Trần Lưu Thành Đạt", "Khoa Y", "Văn phòng khoa", "Core i3 8100", "8", ""], ["PC", "HP", "C024-000688", "HIU_DOANTC", "Trần Công Đoàn", "Khoa Y", "Văn phòng khoa", "Core i5 4590", "8", ""], ["PC", "Dell", "C024-000689", "HIU_DUCNT", "Nguyễn Thành Đức", "Khoa Y", "Văn phòng khoa", "Core i3 8100", "8", ""], ["PC", "HP", "C024-000930", "HIU_DUYNH", "Nguyễn Hoàng Duy", "Khoa Y", "Văn phòng khoa", "Core i5 4590", "8", ""], ["PC", "Dell", "C024-000685", "C024-14-GV01", "Giảng viên", "Khoa Y", "Phòng giảng viên", "Core i3 8100", "8", ""], ["PC", "HP", "C024-000811", "C024-14-GV02", "Giảng viên", "Khoa Y", "Phòng giảng viên", "Core i5 4570", "8", ""], ["PC", "HP", "C024-000812", "C024-14-GV03", "Giảng viên", "Khoa Y", "Phòng giảng viên", "Core i5 4590", "8", ""], ["PC", "HP", "C024-000813", "C024-14-GV04", "Giảng viên", "Khoa Y", "Phòng giảng viên", "Core i5 4570", "8", ""], ["PC", "HP", "C024-000814", "C024-14-GV05", "Giảng viên", "Khoa Y", "Phòng giảng viên", "Core i5 4590", "8", ""], ["PC", "HP", "C024-000788", "HIU_HANHVB", "Vũ Bảo Hạnh", "Khoa Y", "Văn phòng khoa", "Core i5 4590", "8", ""], ["PC", "Dell", "C024-001247", "HIU_HUONGDTT", "Đoàn Thị Phương Nga", "Khoa Y", "Văn phòng khoa", "Core i3 8100", "8", ""], ["PC", "Dell", "C024-000673", "HIU_HOABL", "Bùi Lang Hoa", "Khoa Y", "Văn phòng khoa", "Core i3 8100", "8", ""], ["PC", "HP", "C024-001272", "HIU_HOAN", "Nguyễn Hóa", "Khoa Y", "Văn phòng khoa", "Core i5 4590", "8", ""], ["PC", "Dell", "C024-000597", "HIU_HOANHND", "Nguyễn Đăng Hoành", "Khoa Y", "Văn phòng khoa", "Core i3 8100", "8", ""], ["PC", "Dell", "C024-001248", "HIU_HUNGPH", "Phạm Huy Hùng", "Khoa Y", "Văn phòng", "Core i3 8100", "8", ""], ["PC", "Dell", "C024-000687", "HIU_MINHMTN", "Mai Thị Ngân Minh", "Khoa Y", "Văn phòng khoa", "Core i3 8100", "8", ""], ["PC", "Dell", "C024-000677", "C024-14-NGUYETBTM", "Bùi Thị Minh Nguyệt", "Khoa Y", "Phòng 10.10", "Core i3 8100", "8", ""], ["PC", "Dell", "C024-000756", "HIU_QUYNHDTN", "Đinh Thị Như Quỳnh", "Khoa Y", "Văn phòng khoa", "Core i3 8100", "8", ""], ["PC", "Dell", "C024-000612", "HIU_SONTB", "Trần Lê Quỳnh Như", "Khoa Y", "Văn phòng", "Core i3 8100", "8", ""], ["PC", "Dell", "C024-000606", "HIU_THAOPNP", "Nguyễn Quốc Khánh", "Khoa Y", "VPBM.Sinh học DT", "Core i3 8100", "8", "x"], ["PC", "Dell", "C024-000705", "HIU_TRITM", "Thân Minh Trí", "Khoa Y", "Văn phòng", "Core i3 8100", "8", ""], ["PC", "Dell", "C024-000676", "HIU_TRUNGNC", "Nguyễn Công Trung", "Khoa Y", "Văn phòng", "Core i3 8100", "8", ""], ["PC", "HP", "C024-000783", "C024-14-TTTH", "Trần Thị Huyền Trang", "Khoa Y", "Văn phòng", "Core i5 4570", "8", ""], ["PC", "Dell", "C024-000627", "", "Máy giảng viên", "Khoa Y", "PTH Y Học Cổ Truyền 2", "Core i3 8100", "8", "X"], ["Laptop", "Dell", "C024-000509", "C024-14-2THV", "Hà Văn Thiệu", "Khoa Y", "Văn phòng khoa", "Core i5 7200U", "8", "x"], ["PC", "Dell", "C024-000645", "", "Trương Thị Xuân Thảo", "Khoa Y", "Văn phòng", "Core i3 8100", "8", "x"], ["PC", "Dell", "C024-000700", "HIU_KY_PTH1102", "Máy thực hành", "Khoa Y", "Phòng 11.02", "Core i3 8100", "4", ""], ["PC", "Dell", "C024-000701", "HIU_KY_PTH1101", "Máy thực hành", "Khoa Y", "Phòng 11.01", "Core i3 8100", "4", ""], ["PC", "Dell", "C024-000613", "HIU_KY_PTH1104", "Máy thực hành", "Khoa Y", "Phòng 11.04", "Core i3 8100", "4", ""], ["PC", "Dell", "C024-000702", "HIU_KY_TH04", "Máy thực hành", "Khoa Y", "Phòng 10.4", "Core i3 8100", "4", ""], ["PC", "Dell", "", "HIU_KY_TH03", "Máy thực hành", "Khoa Y", "Phòng 10.3", "Core i3 8100", "4", ""], ["Laptop", "Dell", "C024-000539", "HIU_DUCNT(LAP)", "Nguyễn Thành Đức", "Khoa Y", "Văn phòng khoa", "Core i5 7200U", "8", ""], ["PC", "Dell", "C024-024711", "HIU_KY_TH01", "Máy thực hành", "Khoa Y", "Phòng 10.1", "Core i3 - 10100", "4", ""], ["Laptop", "Acer", "", "", "Máy thực hành", "Khoa Y", "Phòng 11.8", "", "", ""], ["PC", "HP", "C024-000906", "", "Mai Thị Kim Hạnh", "Khoa Y", "Văn phòng", "Core i5 4590", "8", "x"], ["PC", "Lenovo", "C024-025220", "HIU_NGANHTK", "Nghiêm Đình Sáng", "Phòng Công nghệ thông tin", "Văn phòng", "Core i3-10105", "8", ""], ["PC", "Lenovo", "C024-000966", "HIU_DUONGND", "Nguyễn Đại Dương", "Phòng Công nghệ thông tin", "Văn phòng", "Core i5 9400", "8", ""], ["PC", "Lenovo", "C024-025226", "HIU_GIANGDTX", "Phạm Nguyễn Thành Đạt", "Phòng Công nghệ thông tin", "KHO", "Core i3-10105", "8", ""], ["PC", "Lenovo", "C024-000964", "HIU_KHANHLHN", "Lê Hoàng Nhật Khánh", "Phòng Công nghệ thông tin", "Văn phòng", "Core i5 9400", "8", ""], ["PC", "Lenovo", "C024-000678", "C024-20-1HDTD", "BSCKI. Huỳnh Thị Đức Hòa", "Phòng Hành Chánh - Nhân sự", "Trạm y tế 120 Hòa Bình", "Core i5 9400", "8", ""], ["PC", "Lenovo", "C024-000965", "HIU_TINDT1", "Đặng Trần Tín", "Phòng Công nghệ thông tin", "Văn phòng", "Core i5 9400", "8", ""], ["Laptop", "Dell", "C024-000559", "HIU_ANHVTP", "", "Phòng Công nghệ thông tin", "KHO", "Core i5 7200U", "8", ""], ["PC", "Dell", "C024-000625", "HIU_THINHNT", "Nguyễn Ngọc Bảo Hân", "Khoa Điều dưỡng", "Văn phòng khoa", "Core i3 8100", "8", ""], ["Laptop", "Lenovo", "C024-025266", "HIU_KHANHLN", "Lê Hoàng Nhật Khánh", "Phòng Công nghệ thông tin", "Văn phòng", "AMD Ryzen™ 5 5600U", "8", "x"], ["PC", "Dell", "C024-000667", "HIU-ASC-Ultraview", "Máy remote phần mềm ASC", "Phòng Công nghệ thông tin", "Văn phòng", "Core i3 8100", "8", ""], ["PC", "OEM", "", "HIU-CAMVIEW-Ultraview", "CAMUltraview", "Phòng Công nghệ thông tin", "Văn phòng", "Core i3 3240", "6", ""], ["PC", "HP", "C024-001234", "HIU_HAITN", "Trần Ngọc Hải", "Phòng Công nghệ thông tin", "Văn phòng", "Core i5 4570", "8", ""], ["Laptop", "Dell", "C024-000492", "HIU_HIEUTT", "Trần Trọng Hiếu", "Phòng Công nghệ thông tin", "Văn phòng", "Core i5 7200U", "8", ""], ["PC", "HP", "C024-001233", "HIU_SONPN", "Phí Ngọc Sơn", "Phòng Công nghệ thông tin", "Văn phòng", "Core i5 4570", "8", ""], ["Laptop", "Dell", "C024-000527", "HIU_NHUNGNTH2", "Nguyễn Thị Huyền Nhung", "Phòng Công nghệ thông tin", "KHO", "Core i5 7200U", "8", ""], ["PC", "Dell", "C024-000617", "HIU_KIEMTB", "", "Phòng Công nghệ thông tin", "KHO", "Core i3 8100", "4", ""], ["Laptop", "Dell", "C024-000497", "HIU_TRANGHTT(LAP)", "", "Phòng Công nghệ thông tin", "KHO", "Core i5 7200U", "8", ""], ["Laptop", "Dell", "C024-000528", "HIU_BELT", "Lữ Thị Linh Hương", "Phòng Công nghệ thông tin", "KHO", "Core i5 7200U", "8", "x"], ["Laptop", "Dell", "C024-000534", "HIU_MINHHD", "", "Phòng Công nghệ thông tin", "KHO", "Core i5 7200U", "8", ""], ["PC", "HP", "C024-000761", "HIU_QUYNHPT", "Lê Thị Anh", "Khoa Ngôn ngữ và văn hóa quốc tế", "Văn phòng khoa", "Core i5 4590", "8", ""], ["PC", "Dell", "C024-000616", "C024-17-CameraAC6", "Camera Hội Đồng Thi", "Phòng Công nghệ thông tin", "Văn phòng", "Core i3 8100", "4", ""], ["Laptop", "Dell", "C024-000543", "HIU_ANHDNP", "Đỗ Nguyễn Phương Anh", "Phòng Công nghệ thông tin", "KHO", "Core i5 7200U", "8", ""], ["Laptop", "Dell", "C024-000544", "HIU_THIPTA", "Phạm Thị Anh Thi", "Phòng Công nghệ thông tin", "KHO", "Core i5 7200U", "8", ""], ["Laptop", "Dell", "C024-000541", "HIU_THUYNT", "Nguyễn Thị Thủy", "Phòng Công nghệ thông tin", "KHO", "Core i5 7200U", "8", ""], ["Laptop", "Dell", "C024-000551", "C024-23-2SENPTH", "Phạm Thị Hồng Sen", "Phòng Công nghệ thông tin", "KHO", "Core i5 7200U", "8", "x"], ["Laptop", "Dell", "C024-000540", "HIU_VINTT", "Nguyễn Thụy Thúy Vi", "Phòng Công nghệ thông tin", "KHO", "Core i5 7200U", "8", ""], ["Laptop", "Dell", "C024-000518", "HIU_TAIDC", "", "Phòng Công nghệ thông tin", "KHO", "Core i5 7200U", "8", ""], ["Laptop", "Dell", "C024-000512", "HIU_HONGNT", "Nguyễn Thị Hồng", "Phòng Công nghệ thông tin", "KHO", "Core i5 7200U", "8", ""], ["Laptop", "Dell", "C024-000511", "HIU_QUYNHTTN", "Trần Thị Ngọc Quỳnh", "Phòng Công nghệ thông tin", "KHO", "Core i5 7200U", "8", ""], ["Laptop", "Dell", "C024-000515", "HIU_TRANGVTD", "Võ Thị Diễm Trang", "Phòng Công nghệ thông tin", "KHO", "Core i5 7200U", "8", ""], ["Laptop", "Dell", "C024-000513", "HIU_HONGPTD", "Phạm Thị Diễm Hồng", "Phòng Công nghệ thông tin", "KHO", "Core i5 7200U", "8", ""], ["Laptop", "Dell", "C024-000542", "HIU_CHILK", "Lê Kim Chi", "Phòng Công nghệ thông tin", "KHO", "Core i5 7200U", "8", ""], ["Laptop", "Dell", "C024-000508", "HIU_CUONGHQ", "Huỳnh Quang Cường", "Phòng Công nghệ thông tin", "KHO", "Core i5 7200U", "8", ""], ["Laptop", "Dell", "C024-000558", "C024-23-2HUYENTT", "", "Phòng Công nghệ thông tin", "KHO", "Core i5 7200U", "8", "x"], ["PC", "Dell", "C024-000619", "HIU_MAYCHAMTHI", "Máy chấm thi", "Phòng Công nghệ thông tin", "Văn phòng", "Core i3 8100", "8", ""], ["Laptop", "Dell", "C024-000545", "HIU_NAMHV", "Huỳnh Văn Nam", "Phòng Công nghệ thông tin", "KHO", "Core i5 7200U", "8", ""], ["Laptop", "Dell", "C024-000506", "HIU_NGOCPTA", "", "Phòng Công nghệ thông tin", "KHO", "Core i5 7200U", "8", ""], ["Laptop", "Dell", "C024-000546", "HIU_NGUYENNBP", "Nguyễn Bình Phương Nguyễn", "Phòng Công nghệ thông tin", "KHO", "Core i5 7200U", "8", ""], ["Laptop", "Dell", "C024-000538", "HIU_THINMV", "", "Phòng Công nghệ thông tin", "KHO", "Core i5 7200U", "8", ""], ["Laptop", "Dell", "C024-000519", "", "Giang Ngọc Trúc", "Phòng Công nghệ thông tin", "KHO", "Core i5 7200U", "8", "x"], ["Laptop", "Dell", "C024-000520", "", "", "Phòng Công nghệ thông tin", "KHO", "Core i5 7200U", "8", ""], ["Laptop", "Dell", "C024-000561", "", "", "Phòng Công nghệ thông tin", "KHO", "Core i5 7200U", "8", ""], ["Laptop", "Dell", "C024-000529", "", "Phục vụ hoạt động Trường", "Phòng Công nghệ thông tin", "KHO", "Core i5 7200U", "8", ""], ["Laptop", "Dell", "C024-000523", "C024-23-2NHUNLQ", "Nguyễn Lâm Quỳnh Như", "Phòng Công nghệ thông tin", "KHO", "Core i5 7200U", "8", "x"], ["PC", "Dell", "C024-000668", "HIU_THETHANGMAY", "Máy in thẻ thang máy", "Phòng Công nghệ thông tin", "Phòng Server", "Core i3 8100", "4", ""], ["PC", "OEM", "", "C024-17-SUATAN", "Máy Suất ăn, Backup server", "Phòng Công nghệ thông tin", "Phòng Server", "Core i5 7400", "8", ""], ["Laptop", "Dell", "C024-000503", "HIU_TRUNGLM", "", "Phòng Công nghệ thông tin", "KHO", "Core i5 7200U", "8", ""], ["Laptop", "Dell", "C024-000526", "HIU_MINHHD", "Trần Huyền Trang", "Phòng Công nghệ thông tin", "KHO", "Core i5 7200U", "8", "x"], ["Laptop", "Lenovo", "C024-000567", "", "", "Phòng Công nghệ thông tin", "KHO", "Core i5 8265", "8", ""], ["Laptop", "Dell", "C024-000549", "", "Nguyễn Thị Lan Phương", "Phòng Công nghệ thông tin", "KHO", "Core i5 7200U", "8", "x"], ["Laptop", "Dell", "C024-000550", "HIU_TRUCNMH", "Vũ Thị Xuân Hồng", "Phòng Công nghệ thông tin", "KHO", "Core i5 7200U", "8", "X"], ["Laptop", "Dell", "C024-000553", "HIU_NHUTNT", "", "Phòng Công nghệ thông tin", "KHO", "Core i5 7200U", "8", ""], ["Laptop", "Dell", "C024-000514", "HIU_THIHTA", "", "Phòng Công nghệ thông tin", "KHO", "Core i5 7200U", "8", ""], ["Laptop", "Dell", "C024-000537", "", "Trần Đức Tài", "Phòng Công nghệ thông tin", "KHO", "Core i5 7200U", "8", "x"], ["PC", "Dell", "C024-000655", "HIU-CUONGNM2", "", "Phòng Công nghệ thông tin", "KHO", "Core i3 8100", "8", ""], ["PC", "HP", "C024-000485", "", "", "Phòng Công nghệ thông tin", "Phòng Server", "Server HP StoreyEasy 24TB SAS", "", ""], ["PC", "HP", "C024-000486", "HIU-RODC-02", "", "Phòng Công nghệ thông tin", "Phòng Server", "Server HP ProLiantG-9", "", "x"], ["PC", "HP", "C024-000487", "HIU_Files1", "", "Phòng Công nghệ thông tin", "Phòng Server", "Server HP ProLiant ML150 G6", "", ""], ["PC", "HP", "C024-000489", "", "", "Phòng Công nghệ thông tin", "Phòng Server", "Server HP ProLiantG-7", "", ""], ["PC", "OEM", "C024-024994", "", "Sinh viên thực hành", "Phòng Công nghệ thông tin", "Phòng học 12.8", "", "", ""], ["PC", "OEM", "C024-024995", "", "Sinh viên thực hành", "Phòng Công nghệ thông tin", "Phòng học 12.8", "", "", ""], ["PC", "OEM", "C024-024996", "", "Sinh viên thực hành", "Phòng Công nghệ thông tin", "Phòng học 12.8", "", "", ""], ["PC", "OEM", "C024-024997", "", "Sinh viên thực hành", "Phòng Công nghệ thông tin", "Phòng học 12.8", "", "", ""], ["PC", "OEM", "C024-024998", "", "Sinh viên thực hành", "Phòng Công nghệ thông tin", "Phòng học 12.8", "", "", ""], ["PC", "IMAC", "C024-025060", "", "", "Phòng Công nghệ thông tin", "Phòng học 12.8", "i7", "32GB", ""], ["Laptop", "Dell", "C024-000566", "C024-23-2HNTA", "Nguyễn Thị Ánh Huyền", "Phòng Công nghệ thông tin", "KHO", "Core i5 7200U", "8", "x"], ["Laptop", "Dell", "C024-000500", "HIU_NGANHTT", "", "Phòng Công nghệ thông tin", "KHO", "Core i5 7200U", "8", "x"], ["PC", "HP", "C024-000781", "HIU_P.TCKT_ThuHP01", "Thu HP1", "Phòng Công nghệ thông tin", "KHO", "Core i5 4570", "8", ""], ["PC", "HP", "C024-000782", "HIU_P.TCKT_ThuHP02", "Thu HP2", "Phòng Công nghệ thông tin", "KHO", "Core i5 4590", "8", ""], ["PC", "Dell", "C024-000664", "C024-14-THAOTTX", "", "Phòng Công nghệ thông tin", "KHO", "Core i3 8100", "8", ""], ["PC", "Lenovo", "C024-025226", "", "", "Phòng Công nghệ thông tin", "KHO", "Core i3-10105", "8", ""], ["Laptop", "Lenovo", "", "", "", "Phòng Công nghệ thông tin", "KHO", "Core 7 240H", "16", "X"], ["Laptop", "Lenovo", "C024-025206", "HIU_MYHHH", "Huỳnh Hoa Hồng My", "Phòng Đào tạo Đại học", "Văn phòng", "AMD Ryzen™ 5 5600U", "8", ""], ["PC", "Dell", "C024-000651", "HIU_ANNTH", "Nguyễn Thị Hoài An", "Phòng Đào tạo Đại học", "Văn phòng", "Core i3 8100", "8", ""], ["PC", "Dell", "C024-000704", "HIU_BINHVA", "Nguyễn Thị Thu Ngân", "Phòng Đào tạo Đại học", "Văn phòng", "Core i3 8100", "8", "x"], ["PC", "HP", "C024-000769", "HIU_CHINHNHM", "Nguyễn Hoàng Mỹ Chinh", "Phòng Đào tạo Đại học", "Văn phòng", "Core i5 4570", "8", ""], ["PC", "Dell", "C024-000622", "HIU_DOANNM", "Nguyễn Minh Đoan", "Phòng Đào tạo Đại học", "Văn phòng", "Core i3 8100", "4", ""], ["PC", "Dell", "C024-000703", "HIU_HOANGNV", "Trần Thị Tường Vy", "Phòng Đào tạo Đại học", "Văn phòng", "Core i3 8100", "4", ""], ["PC", "HP", "C024-000770", "HIU_MAIHTA", "Hoàng Thị Anh Mai", "Phòng Đào tạo Đại học", "Văn phòng", "Core i5 4570", "8", ""], ["PC", "HP", "C024-000963", "HIU_MYHHH", "Huỳnh Hoa Hồng My", "Phòng Đào tạo Đại học", "Văn phòng", "Core i5 4570", "8", ""], ["PC", "HP", "C024-000771", "HIU_NHUNTQ", "Nguyễn Thị Quỳnh Như", "Phòng Đào tạo Đại học", "Văn phòng", "Core i5 4570", "8", ""], ["PC", "Dell", "C024-000624", "HIU_THAONCN", "Nguyễn Châu Ngọc Thảo", "Phòng Đào tạo Đại học", "Văn phòng", "Core i3 8100", "8", ""], ["PC", "Dell", "C024-000623", "HIU_THITTT", "Trần Thị Thi Thi", "Phòng Đào tạo Đại học", "Văn phòng", "Core i3 8100", "8", ""], ["PC", "Dell", "C024-000717", "HIU_THUANLD", "Lương Đức Thuần", "Phòng Đào tạo Đại học", "Văn phòng", "Core i3 8100", "8", ""], ["PC", "OEM", "C024-000768", "HIU_TRUNGLM", "Lê Minh Trung", "Phòng Đào tạo Đại học", "Văn phòng", "Core i5 6400", "8", ""], ["PC", "Dell", "C024-001228", "HIU_TRUNGNT2", "Võ Ngọc Lê Mi", "Phòng Đào tạo Đại học", "Văn phòng", "Core i3 8100", "8", "x"], ["Laptop", "Lenovo", "C024-025203", "", "Lê Minh Trung", "Phòng Đào tạo Đại học", "Văn phòng", "AMD Ryzen™ 5 5600U", "8", "x"], ["PC", "HP", "C024-000935", "C024-23-1LOANLT", "Trương Minh Hiếu", "Phòng Đào tạo đại học", "Văn phòng", "Core i5 4570", "8", ""], ["PC", "Lenovo", "C024-025115", "", "Trình Ngọc Tình", "Phòng Khảo thí - Đảm bảo chất lượng", "Văn phòng", "Core i3-10105", "8", "x"], ["PC", "Lenovo", "C024-025253", "HIU_GLOBAL", "", "Phòng Hành Chánh - Nhân sự", "Phòng họp Global", "Core i3-10105", "8", "x"], ["PC", "Dell", "C024-000632", "HIU_NHUTLQ", "Nguyễn Tấn Tài", "Phòng Hành Chánh - Nhân sự", "Văn phòng", "Core i3 8100", "8", ""], ["PC", "Lenovo", "C024-000950", "HIU_HANGTTT", "Trương Thị Thu Hằng", "Phòng Hành Chánh - Nhân sự", "Văn phòng", "Core i5 9400", "8", ""], ["Laptop", "Lenovo", "C024-025199", "HIU_LINHHTX", "Huỳnh Thị Xuân Linh", "Phòng Hành Chánh - Nhân sự", "Văn phòng", "AMD Ryzen™ 5 5600U", "8", ""], ["Laptop", "Dell", "C024-000525", "HIU_THANHPT", "Phan Trung Thành", "Phòng Hành Chánh - Nhân sự", "Văn phòng", "Core i5 7200U", "8", ""], ["PC", "HP", "C024-000957", "HIU_ANHTTH", "Trần Thị Hoàng Anh", "Phòng Hành Chánh - Nhân sự", "Văn phòng", "Core i5 4590", "8", ""], ["PC", "Dell", "C024-000648", "C024-20-1VANNTT", "Nguyễn Thị Thu Vân", "Phòng Hành Chánh - Nhân sự", "Trạm Y Tế", "Core i3 8100", "8", ""], ["PC", "Dell", "C024-000615", "HIU_ANPTT", "Phan Thị Thúy An", "Phòng Hành Chánh - Nhân sự", "Văn phòng", "Core i3 8100", "4", ""], ["PC", "HP", "C024-000760", "HIU_HOANGLTT", "Lê Thị Thảo Hoàng", "Phòng Hành Chánh - Nhân sự", "Văn phòng", "Core i5 4590", "8", ""], ["PC", "HP", "C024-000757", "HIU_LINHHTX", "Huỳnh Thị Xuân Linh", "Phòng Hành Chánh - Nhân sự", "Văn phòng", "Core i5 4590", "8", ""], ["PC", "Dell", "C024-000614", "HIU_NGANNTT", "Nguyễn Thị Thu Ngân", "Phòng Hành Chánh - Nhân sự", "Văn phòng", "Core i3 8100", "4", ""], ["Laptop", "Dell", "C024-000499", "HIU_QUYNHPT_LAP", "Hoàng Thiện Thiên Trang", "Phòng Hành Chánh - Nhân sự", "Văn phòng", "Core i5 7200U", "8", ""], ["PC", "HP", "C024-000759", "HIU_THUYDTT78", "Doãn Thị Thu Thủy", "Phòng Hành Chánh - Nhân sự", "Văn phòng", "Core i5 4570", "8", ""], ["PC", "HP", "C024-000758", "HIU_TRANGHTT", "Hoàng Thiện Thiên Trang", "Phòng Hành Chánh - Nhân sự", "Văn phòng", "Core i5 4590", "8", ""], ["PC", "OEM", "C024-028387", "HIU_DIENHONG", "Hành Chánh - Nhân Sự", "Phòng Hành Chánh - Nhân sự", "Phòng họp Diên Hồng", "", "", "x"], ["Laptop", "Dell", "C024-000507", "C024-20-2PNV", "Nguyễn Văn Phong", "Phòng Hành Chánh - Nhân sự", "Trạm Y Tế", "Core i5 7200U", "8", "x"], ["Laptop", "Lenovo", "C024-030060", "", "Lê Thị Bé", "Phòng Hành Chánh - Nhân sự", "Văn phòng", "AMD Ryzen™ 5 7535U", "8", ""], ["Laptop", "Lenovo", "C024-030064", "", "Hà Đức Minh", "Phòng Hành Chánh - Nhân sự", "Văn phòng", "AMD Ryzen™ 5 7535U", "8", "x"], ["PC", "Lenovo", "C024-000765", "C024-25-VANLTK", "Nguyễn Hoa Nhật Linh", "Phòng Hành chính - Nhân sự", "Văn phòng", "Core i5 9400", "8", "x"], ["Laptop", "Lenovo", "C024-025200", "HIU_PHINTY", "Nguyễn Thị Yến Phi", "Phòng Khảo thí - Đảm bảo chất lượng", "Văn phòng", "AMD Ryzen™ 5 5600U", "8", ""], ["PC", "HP", "C024-000766", "HIU_HANGBTT", "Bùi Thị Thúy Hằng", "Phòng Khảo thí - Đảm bảo chất lượng", "Văn phòng", "Core i5 4590", "8", ""], ["PC", "Dell", "C024-000618", "HIU_NGUYENNP", "Nguyễn Phụng Nguyễn", "Phòng Khảo thí - Đảm bảo chất lượng", "Văn phòng", "Core i3 8100", "8", ""], ["PC", "HP", "C024-000767", "HIU_PHINTY", "Nguyễn Thị Yến Phi", "Phòng Khảo thí - Đảm bảo chất lượng", "Văn phòng", "Core i5 4570", "8", ""], ["PC", "Dell", "C024-000647", "HIU_PHUONGNL", "Nguyễn Lê Phương", "Phòng Khảo thí - Đảm bảo chất lượng", "Văn phòng", "Core i3 8100", "8", ""], ["PC", "Dell", "C024-000588", "HIU_QUYENPNT", "Phan Nguyễn Thảo Quyên", "Phòng Khảo thí - Đảm bảo chất lượng", "Văn phòng", "Core i3 8100", "8", ""], ["PC", "Dell", "C024-000620", "HIU_TLT", "Lê Thành Trung", "Phòng Khảo thí - Đảm bảo chất lượng", "Văn phòng", "Core i3 8100", "8", ""], ["PC", "Dell", "C024-001273", "HIU_TAMPTT", "Phạm Thị Thanh Tâm", "Phòng Khảo thí - Đảm bảo chất lượng", "Văn phòng", "Core i3 8100", "8", ""], ["PC", "Dell", "C024-000589", "HIU_TRUONGNDX", "Nguyễn Đặng Xuân Trường", "Phòng Khảo thí - Đảm bảo chất lượng", "Văn phòng", "Core i3 8100", "8", ""], ["Laptop", "Lenovo", "C024-030059", "", "Nguyễn Duy Cường", "Phòng Khảo thí - Đảm bảo chất lượng", "Văn phòng", "AMD Ryzen™ 5 7535U", "8", "x"], ["Laptop", "Lenovo", "C024-025201", "HIU_HOACTN", "Châu Thị Ngọc Hoa", "Phòng Quản lý Cơ sở vật chất", "Văn phòng", "AMD Ryzen™ 5 5600U", "8", ""], ["Laptop", "Lenovo", "C024-000533", "HIU_MAYINTEM", "Máy in tem", "Phòng Quản lý Cơ sở vật chất", "Văn phòng", "Core i5 8265", "8", ""], ["PC", "Dell", "C024-000604", "HIU_DUNGNQ", "Nguyễn Quốc Dũng", "Phòng Quản lý Cơ sở vật chất", "Văn phòng", "Core i3 8100", "4", ""], ["PC", "HP", "C024-000939", "HIU_HOATTK", "Trần Thị Kim Hoa", "Phòng Quản lý Cơ sở vật chất", "Văn phòng", "Core i5 4570", "8", "x"], ["PC", "HP", "C024-000959", "HIU_SANHLED", "Máy sảnh LED", "Phòng Quản lý Cơ sở vật chất", "Phòng kỹ thuật hội trường", "Core i5 4570", "8", ""], ["PC", "HP", "C024-000807", "HIU_KIENPT", "Phạm Thị Kiên", "Phòng Quản lý Cơ sở vật chất", "Văn phòng", "Core i5 4570", "8", ""], ["PC", "OEM", "", "HIU_NAMNP", "Nguyễn Phương Nam", "Phòng Quản lý Cơ sở vật chất", "Phòng kỹ thuật B1", "Core i5 9400", "8", ""], ["PC", "OEM", "C024-000953", "HIU_KYTHUAT", "Kỹ thuật toà nhà", "Phòng Quản lý Cơ sở vật chất", "Phòng kỹ thuật B1", "Core i7 2600", "8", ""], ["PC", "OEM", "C024-000952", "HIU_CAM-TOANTRUONG", "Máy xem Camera", "Phòng Quản lý Cơ sở vật chất", "Phòng kỹ thuật B1", "Core i5 7400", "8", ""], ["PC", "HP", "C024-000948", "HIU_CAM-PHONGMAY", "Máy xem Camera", "Phòng Quản lý Cơ sở vật chất", "Phòng kỹ thuật B1", "Core i5 4570", "16", ""], ["PC", "HP", "", "HIU_CAM_FC", "Máy xem Camera Foodcourt", "Phòng Quản lý Cơ sở Vật chất", "Phòng kỹ thuật B1", "Core i3 6100", "8", ""], ["PC", "Dell", "C024-000665", "HIU_LINHLTT", "Lê Thị Tuyền Linh", "Phòng Quản lý Cơ sở vật chất", "Văn phòng", "Core i3 8100", "8", ""], ["PC", "Dell", "C024-000603", "HIU_LINHNNN", "Nguyễn Nhan Nhựt Linh", "Phòng Quản lý Cơ sở vật chất", "Văn phòng", "Core i3 8100", "4", ""], ["PC", "HP", "C024-000753", "HIU_NGUYENNTN", "Nguyễn Thị Nhã Nguyên", "Phòng Quản lý Cơ sở vật chất", "Văn phòng", "Core i5 4570", "8", ""], ["Laptop", "Lenovo", "C024-025256", "HIU_NHUTNHH", "Huỳnh Hữu Pho", "Phòng Quản lý Cơ sở vật chất", "Văn phòng", "AMD Ryzen™ 5 5600U", "8", ""], ["PC", "Dell", "C024-000610", "HIU-TUANN2", "Trương Mỹ Hà", "Khoa Y", "Văn phòng khoa", "Core i3 8100", "8", "x"], ["PC", "HP", "C024-000958", "HIU_HTRUONG", "Máy dùng Hội trường", "Phòng Quản lý Cơ sở vật chất", "Phòng kỹ thuật hội trường", "Core i5 4570", "8", ""], ["PC", "OEM", "C024-000663", "HIU_PQLCSVC_KT", "Máy phát nhạc, PCCC", "Phòng Quản lý Cơ sở vật chất", "Phòng kỹ thuật B1", "Core i3 3240", "4", ""], ["PC", "Lenovo", "C024-000954", "HIU_GIOITH", "Nguyễn Thị Kim Thoa", "Phòng Quản lý Khoa học - Tạp chí Khoa học", "Văn phòng", "Core i5 9400", "8", ""], ["PC", "Dell", "C024-000626", "HIU_HONGNTT", "Nguyễn Thị Thúy Hồng", "Phòng Quản lý Khoa học - Tạp chí Khoa học", "Văn phòng", "Core i3 8100", "4", ""], ["PC", "Dell", "C024-000714", "HIU_THUDNA", "Đỗ Nguyễn Anh Thư", "Khoa Điều dưỡng", "Văn phòng", "Core i3 8100", "4", ""], ["Laptop", "Lenovo", "C024-030066", "", "Đỗ Chiếm Tài", "Phòng Quản lý Khoa học - Tạp chí Khoa học", "Văn phòng", "AMD Ryzen™ 5 7535U", "8", "x"], ["Laptop", "Lenovo", "", "Vũ Thị Xuân Hồng", "Nguyễn Hoàng Thu Trang", "Phòng Quản lý Khoa học - Tạp chí Khoa học", "Văn phòng", "Core 7 240H", "16", "X"], ["PC", "Lenovo", "C024-000751", "HIU_TRIEUNTT", "Nguyễn Thị Thủy Triều", "Phòng Tài chính - Kế toán", "Văn phòng", "Core i5 9400", "8", ""], ["Laptop", "Lenovo", "C024-025204", "HIU_KIEUNTT", "Nguyễn Thị Thúy Kiều", "Phòng Tài chính - Kế toán", "Văn phòng", "AMD Ryzen™ 5 5600U", "8", ""], ["Laptop", "Lenovo", "C024-025263", "HIU_LAMDTH", "Đặng Thị Hoàng Lam", "Phòng Tài chính - Kế toán", "Văn phòng", "AMD Ryzen™ 5 5600U", "8", ""], ["Laptop", "Lenovo", "C024-025257", "", "", "Phòng Công nghệ thông tin", "KHO", "AMD Ryzen™ 5 5600U", "8", ""], ["Laptop", "Lenovo", "C024-000569", "HIU_VUHV", "Hồ Văn Vũ", "Phòng Tài chính - Kế toán", "Văn phòng", "Core i5 8265", "8", ""], ["Laptop", "Lenovo", "C024-025205", "HIU_LUCPT", "Phạm Tấn Lực", "Phòng Tài chính - Kế toán", "Văn phòng", "AMD Ryzen™ 5 5600U", "8", ""], ["PC", "Dell", "C024-000646", "HIU_TRANGNTY", "Nguyễn Thị Yến Trang", "Phòng Tài chính - Kế toán", "Văn phòng", "Core i3 8100", "8", ""], ["Laptop", "Lenovo", "C024-025208", "HIU_DUNGPV", "Nguyễn Thị Thủy Triều", "Phòng Tài chính - Kế toán", "Văn phòng", "AMD Ryzen™ 5 5600U", "8", "x"], ["PC", "Lenovo", "C024-025252", "", "Bùi Trần Thảo Nhi", "Phòng Khảo thí - Đảm bảo chất lượng", "Văn phòng", "Core i3-10105", "8", "X"], ["Laptop", "Lenovo", "C024-030061", "", "Nguyễn Sĩ Tuấn", "Khoa Xét nghiệm Y học", "Văn phòng khoa", "AMD Ryzen™ 5 7535U", "8", ""], ["PC", "HP", "C024-000772", "HIU_VINHNP", "Nguyễn Phúc Vinh", "Trung tâm ngoại ngữ", "Văn phòng", "Core i5 4570", "8", ""], ["Laptop", "Dell", "C024-000521", "HIU_THIENNT", "Trần Thị Lộc", "Trung tâm Tuyển sinh - Truyền thông", "Văn phòng Tuyển sinh", "Core i5 7200U", "8", "x"], ["Laptop", "Dell", "C024-000524", "HIU_TRUNGLM_LAP", "Nguyễn Dương", "Trung tâm Tuyển sinh - Truyền thông", "Văn phòng Tuyển sinh", "Core i5 7200U", "8", ""], ["Laptop", "Lenovo", "C024-000570", "HIU_ANNDT", "Nguyễn Đức Thiên Ân", "Trung tâm Tuyển sinh - Truyền thông", "Văn phòng Truyền thông", "Core i5 8265", "8", ""], ["Laptop", "Lenovo", "C024-025210", "HIU_HIEPNN", "Nguyễn Nghĩa Hiệp", "Trung tâm Tuyển sinh - Truyền thông", "Văn phòng Tuyển sinh", "AMD Ryzen™ 5 5600U", "8", ""], ["Laptop", "Lenovo", "C024-025202", "HIU_LAMNT", "Nguyễn Thanh Lâm", "Trung tâm Tuyển sinh - Truyền thông", "Văn phòng Tuyển sinh", "AMD Ryzen™ 5 5600U", "8", ""], ["Laptop", "Dell", "C024-000554", "HIU_QUYNHNTY", "Nguyễn Triều Gia Bảo", "Phòng Công nghệ thông tin", "KHO", "Core i5 7200U", "8", "x"], ["Laptop", "Lenovo", "C024-025197", "HIU_TRAMTVM", "Thang Võ Minh Trâm", "Trung tâm Tuyển sinh - Truyền thông", "Văn phòng Truyền thông", "AMD Ryzen™ 5 5600U", "8", ""], ["PC", "HP", "C024-000905", "HIU_CUONGNM2", "Nguyễn Minh Cường", "Trung tâm Tuyển sinh - Truyền thông", "Văn phòng Truyền thông", "Core i5 4570", "8", ""], ["PC", "Dell", "C024-000712", "HIU_TTTS_CTV", "Cộng tác viên", "Trung tâm Tuyển sinh - Truyền thông", "Văn phòng Tuyển sinh", "Core i3 8100", "4", ""], ["PC", "ASUS", "C024-000716", "HIU_DUNGVT", "Cộng tác viên", "Trung tâm Tuyển sinh - Truyền thông", "Văn phòng Truyền thông", "i7 11700", "32", ""], ["Laptop", "Lenovo", "C024-025258", "HIU_2DUCNP", "Nguyễn Phú Đức", "Trung tâm Tuyển sinh - Truyền thông", "Văn phòng Truyền thông", "AMD Ryzen™ 5 5600U", "8", "x"], ["PC", "AMD", "C024-001270", "HIU_PHAINV", "Nguyễn Văn Phái", "Trung tâm Tuyển sinh - Truyền thông", "Văn phòng Truyền thông", "R7 2700X", "16", ""], ["PC", "Dell", "C024-000713", "HIU_THAONN", "Nguyễn Ngọc Thảo", "Trung tâm Tuyển sinh - Truyền thông", "Văn phòng Truyền thông", "Core i3 8100", "4", ""], ["Laptop", "Lenovo", "C024-000548", "HIU_DUNGNT", "Ngô Trí Dũng", "Trung tâm Tuyển sinh - Truyền thông", "Văn phòng Tuyển sinh", "Core i5 8265", "8", ""], ["Laptop", "Dell", "C024-000501", "", "Huỳnh Võ Hữu Tâm", "Trung tâm Tuyển sinh - Truyền thông", "Văn phòng", "Core i5 7200U", "8", "x"], ["Laptop", "Dell", "C024-000498", "HIU_BELT", "Nguyễn Thị Mỹ Uyên", "Trung tâm Tuyển sinh - Truyền thông", "Văn phòng", "Core i5 7200U", "8", "x"], ["Laptop", "Dell", "C024-000535", "C024-26-2CNTT", "Mai Ngọc Tuyền", "Trung tâm Tuyển sinh - Truyền thông", "Văn phòng Truyền thông", "Core i5 7200U", "8", ""], ["Laptop", "Dell", "C024-000552", "C024-23-2VITTT", "Trần Quỳnh Trang", "Trung tâm Tuyển sinh - Truyền thông", "Văn phòng", "Core i5 7200U", "8", "x"], ["Laptop", "Dell", "C024-000505", "HIU_TUYETHTK", "Nguyễn Thị Minh Thư", "Trung tâm Tuyển sinh - Truyền thông", "Văn phòng Tuyển sinh", "Core i5 7200U", "8", "x"], ["Laptop", "Lenovo", "C024-025198", "C024-23-2HUYVQ", "Vũ Quang Huy", "Trung tâm Tuyển sinh - Truyền thông", "Văn phòng", "AMD Ryzen™ 5 5600U", "8", ""], ["PC", "IMAC", "C024-025059", "HIU_ANHDTM", "Dương Thị Mai Anh", "Trung tâm Tuyển sinh - Truyền thông", "Văn phòng Truyền thông", "i7", "32GB", ""], ["Ipad", "Apple", "C024-000576", "", "", "Trung tâm Tuyển sinh - Truyền thông", "Văn phòng Tuyển sinh", "", "", ""], ["Ipad", "Apple", "C024-000577", "", "", "Trung tâm Tuyển sinh - Truyền thông", "Văn phòng Tuyển sinh", "", "", ""], ["Ipad", "Apple", "C024-000578", "", "", "Trung tâm Tuyển sinh - Truyền thông", "Văn phòng Tuyển sinh", "", "", ""], ["Ipad", "Apple", "C024-000579", "", "", "Trung tâm Tuyển sinh - Truyền thông", "Văn phòng Tuyển sinh", "", "", ""], ["Ipad", "Apple", "C024-000580", "", "", "Trung tâm Tuyển sinh - Truyền thông", "Văn phòng Tuyển sinh", "", "", ""], ["Ipad", "Apple", "C024-000581", "", "", "Trung tâm Tuyển sinh - Truyền thông", "Văn phòng Tuyển sinh", "", "", ""], ["Ipad", "Apple", "C024-000582", "", "", "Trung tâm Tuyển sinh - Truyền thông", "Văn phòng Tuyển sinh", "", "", ""], ["Ipad", "Apple", "C024-000583", "", "", "Trung tâm Tuyển sinh - Truyền thông", "Văn phòng Tuyển sinh", "", "", ""], ["Ipad", "Apple", "C024-000584", "", "", "Trung tâm Tuyển sinh - Truyền thông", "Văn phòng Tuyển sinh", "", "", ""], ["Ipad", "Apple", "C024-000585", "", "", "Trung tâm Tuyển sinh - Truyền thông", "Văn phòng Tuyển sinh", "", "", ""], ["Laptop", "Lenovo", "", "Vũ Thị Xuân Hồng", "Nguyễn Thị Lan Phương", "Trung tâm Tuyển sinh - Truyền thông", "Văn phòng", "Core 7 240H", "16", "X"], ["Laptop", "Lenovo", "", "Vũ Thị Xuân Hồng", "Phạm Thị Hồng Sen", "Trung tâm Tuyển sinh - Truyền thông", "Văn phòng", "Core 7 240H", "16", "X"], ["Laptop", "Lenovo", "", "Vũ Thị Xuân Hồng", "Đỗ Nguyễn Phương Anh", "Trung tâm Tuyển sinh - Truyền thông", "Văn phòng", "Core 7 240H", "16", "X"], ["Laptop", "Lenovo", "", "", "Nguyễn Thị Thủy", "Trung tâm Tuyển sinh - Truyền thông", "Văn phòng", "Core 7 240H", "16", "X"], ["Laptop", "Lenovo", "", "", "Nguyễn Thụy Thúy Vi", "Trung tâm Tuyển sinh - Truyền thông", "Văn phòng", "Core 7 240H", "16", "X"], ["Laptop", "Lenovo", "", "", "Lê Kim Chi", "Trung tâm Tuyển sinh - Truyền thông", "Văn phòng", "Core 7 240H", "16", "X"], ["Laptop", "Lenovo", "", "", "Nguyễn Ngọc Minh Châu", "Trung tâm Tuyển sinh - Truyền thông", "Văn phòng", "Core 7 240H", "16", "X"], ["Laptop", "Lenovo", "", "", "Vũ Thị Xuân Hồng", "Trung tâm Tuyển sinh - Truyền thông", "Văn phòng", "Core 7 240H", "16", "X"], ["Laptop", "Lenovo", "", "", "Đào Thị Mỹ Tiên", "Trung tâm Tuyển sinh - Truyền thông", "Văn phòng", "Core 7 240H", "16", "X"], ["Laptop", "Lenovo", "", "", "Nguyễn Lâm Quỳnh Như", "Trung tâm Tuyển sinh - Truyền thông", "Văn phòng", "Core 7 240H", "16", "X"], ["Laptop", "Lenovo", "", "", "Giang Ngọc Trúc", "Trung tâm Tuyển sinh - Truyền thông", "Văn phòng Tuyển sinh", "Core 7 240H", "16", "X"], ["Laptop", "Lenovo", "", "", "Nguyễn Thị Ánh Huyền", "Trung tâm Tuyển sinh - Truyền thông", "Văn phòng Tuyển sinh", "Core 7 240H", "16", "X"], ["Laptop", "Lenovo", "", "", "Nguyễn Bình Phương Nguyễn", "Trung tâm Tuyển sinh - Truyền thông", "Văn phòng Tuyển sinh", "Core 7 240H", "16", "X"], ["Laptop", "Lenovo", "", "", "Huỳnh Văn Nam", "Trung tâm Tuyển sinh - Truyền thông", "Văn phòng Tuyển sinh", "Core 7 240H", "16", "X"], ["Laptop", "Lenovo", "", "", "Nguyễn Thị Mỹ Uyên", "Trung tâm Tuyển sinh - Truyền thông", "Văn phòng Tuyển sinh", "Core 7 240H", "16", "X"], ["PC", "Lenovo", "C024-025216", "HIU_DIEPBNH", "Bùi Nguyễn Hoàng Diệp", "Trung tâm thông tin - Thư viện", "Văn phòng", "Core i3-10105", "8", ""], ["PC", "Lenovo", "C024-025217", "HIU_TAMNT", "Nguyễn Thị Tám", "Trung tâm thông tin - Thư viện", "Văn phòng", "Core i3-10105", "8", ""], ["PC", "OEM", "C024-000634", "HIU_THUVIEN_SV15", "Máy sinh viên tra cứu", "Trung tâm thông tin - Thư viện", "Văn phòng", "Core i3 3240", "8", "x"], ["PC", "Dell", "C024-000635", "HIU_THUVIEN_SV01", "Trương Minh Hoài", "Trung tâm thông tin - Thư viện", "Thư viện", "Core i3 8100", "8", "x"], ["PC", "Dell", "C024-001222", "HIU_THUVIEN_SV06", "Máy sinh viên tra cứu", "Trung tâm thông tin - Thư viện", "Thư viện", "Core i3 8100", "4", ""], ["PC", "Dell", "C024-001227", "HIU_THUVIEN_SV11", "Máy sinh viên tra cứu", "Trung tâm thông tin - Thư viện", "Thư viện", "Core i3 8100", "4", ""], ["PC", "Dell", "C024-000636", "HIU_THUVIEN_SV12", "Máy sinh viên tra cứu", "Trung tâm thông tin - Thư viện", "Thư viện", "Core i3 8100", "4", ""], ["PC", "Dell", "C024-000637", "HIU_THUVIEN_SV13", "Máy sinh viên tra cứu", "Trung tâm thông tin - Thư viện", "Thư viện", "Core i3 8100", "4", ""], ["PC", "Dell", "C024-000638", "HIU_THUVIEN_SV14", "Máy sinh viên tra cứu", "Trung tâm thông tin - Thư viện", "Thư viện", "Core i3 8100", "4", ""], ["PC", "Dell", "C024-000641", "HIU_THUVIEN_SV16", "Máy sinh viên tra cứu", "Trung tâm thông tin - Thư viện", "Thư viện", "Core i3 8100", "4", ""], ["PC", "HP", "C024-000937", "HIU_THUVIEN_SV18", "Máy sinh viên tra cứu", "Trung tâm thông tin - Thư viện", "Thư viện", "Core i5 4570", "8", ""], ["PC", "HP", "C024-000911", "HIU_THUVIEN_SV19", "Máy sinh viên tra cứu", "Trung tâm thông tin - Thư viện", "Thư viện", "Core i5 4570", "8", ""], ["PC", "HP", "C024-000912", "HIU_THUVIEN_SV20", "Máy sinh viên tra cứu", "Trung tâm thông tin - Thư viện", "Thư viện", "Core i5 4570", "8", ""], ["PC", "HP", "C024-000913", "HIU_THUVIEN_SV21", "Máy sinh viên tra cứu", "Trung tâm thông tin - Thư viện", "Thư viện", "Core i5 4570", "8", ""], ["PC", "HP", "C024-000914", "HIU_THUVIEN_SV22", "Máy sinh viên tra cứu", "Trung tâm thông tin - Thư viện", "Thư viện", "Core i5 4570", "8", ""], ["PC", "HP", "C024-000919", "HIU_THUVIEN_SV23", "Máy sinh viên tra cứu", "Trung tâm thông tin - Thư viện", "Thư viện", "Core i5 4570", "8", ""], ["PC", "HP", "C024-000921", "HIU_THUVIEN_SV24", "Máy sinh viên tra cứu", "Trung tâm thông tin - Thư viện", "Thư viện", "Core i5 4570", "8", ""], ["PC", "HP", "C024-000922", "HIU_THUVIEN_SV25", "Máy sinh viên tra cứu", "Trung tâm thông tin - Thư viện", "Thư viện", "Core i5 4570", "8", ""], ["PC", "HP", "C024-000920", "HIU_THUVIEN_SV26", "Máy sinh viên tra cứu", "Trung tâm thông tin - Thư viện", "Thư viện", "Core i5 4570", "8", ""], ["PC", "Dell", "C024-001226", "HIU_THUVIEN_SV10", "Máy sinh viên tra cứu", "Trung tâm thông tin - Thư viện", "Thư viện", "Core i3 8100", "4", ""], ["PC", "HP", "C024-000938", "HIU_THUVIEN_SV17", "Máy sinh viên tra cứu", "Trung tâm thông tin - Thư viện", "Thư viện", "Core i5 4570", "8", ""], ["PC", "Dell", "C024-000640", "HIU_VULH", "Lê Hoàng Vũ", "Trung tâm thông tin - Thư viện", "Văn phòng", "Core i3 8100", "4", ""], ["PC", "HP", "C024-000780", "C024-27-LIB08", "Máy scan sách", "Trung tâm thông tin - Thư viện", "Văn phòng", "Core i5 4570", "8", "x"], ["Laptop", "Lenovo", "", "Vũ Thị Xuân Hồng", "Huỳnh Thị Kim Tuyết", "Trung tâm thông tin - Thư viện", "Văn phòng", "Core 7 240H", "16", "X"], ["PC", "Dell", "C024-000644", "HIU_TUNGTM", "Nguyễn Ngọc Gia Khánh", "Trung tâm Tuyển sinh - Truyền thông", "Văn phòng", "Core i3 8100", "8", ""], ["Laptop", "Lenovo", "C024-000517", "HIU_TIENNT(LAP)", "Nguyễn Trần Tiến", "Trung tâm việc làm và trải nghiệm sinh viên", "Văn phòng", "Core i5 8265", "8", ""], ["Laptop", "Lenovo", "C024-000516", "HIU_HIU_LAP", "Cao Nguyên Yến Vi", "Trung tâm việc làm và trải nghiệm sinh viên", "Văn phòng", "Core i5 8265", "8", ""], ["PC", "Dell", "C024-000657", "HIU_DANGLH", "Lê Hải Đăng", "Trung tâm việc làm và trải nghiệm sinh viên", "Văn phòng", "Core i3 8100", "4", ""], ["PC", "Dell", "C024-000656", "HIU_HUONGHM", "Hoàng Minh Hương", "Trung tâm việc làm và trải nghiệm sinh viên", "Văn phòng", "Core i3 8100", "8", ""], ["PC", "Dell", "C024-000661", "HIU_MAYINTHE", "Máy in thẻ", "Trung tâm việc làm và trải nghiệm sinh viên", "Văn phòng", "Core i3 8100", "4", ""], ["PC", "Dell", "C024-000658", "HIU_THIHTA", "Huỳnh Thị Anh Thi", "Trung tâm việc làm và trải nghiệm sinh viên", "Văn phòng", "Core i3 8100", "8", ""], ["PC", "Dell", "C024-000649", "HIU_THUNTH", "Nguyễn Thị Hà Thu", "Trung tâm việc làm và trải nghiệm sinh viên", "Văn phòng", "Core i3 8100", "8", ""], ["PC", "AMD", "C024-000715", "HIU_TIENNT", "Nguyễn Trần Tiến", "Trung tâm việc làm và trải nghiệm sinh viên", "Văn phòng", "i7 11700", "32", ""], ["PC", "Dell", "C024-000662", "HIU_VILTT", "Lê Thị Tường Vi", "Trung tâm việc làm và trải nghiệm sinh viên", "Văn phòng", "Core i3 8100", "4", ""], ["PC", "Dell", "C024-000633", "HIU_VPDOAN", "VP ĐOÀN", "Trung tâm việc làm và trải nghiệm sinh viên", "Đoàn thanh niên - Hội sinh viên", "Core i3 8100", "8", ""], ["Laptop", "Dell", "C024-000536", "HIU_DUCNA", "Nguyễn Anh Đức", "Trung tâm việc làm và trải nghiệm sinh viên", "Văn phòng", "Core i5 7200U", "8", ""], ["Laptop", "Lenovo", "C024-025209", "", "Nguyễn Khắc Quốc Huy", "Trung tâm việc làm và trải nghiệm sinh viên", "Văn phòng", "AMD Ryzen™ 5 5600U", "8", "x"], ["PC", "IMAC", "C024-025061", "HIU_VICNV", "Cao Nguyên Yến Vi", "Trung tâm việc làm và trải nghiệm sinh viên", "Văn phòng", "i7", "32GB", ""], ["Laptop", "Dell", "C024-000510", "HIU_DUCNA", "Nguyễn Anh Đức", "Trung tâm việc làm và trải nghiệm sinh viên", "Văn phòng", "Core i5 7200U", "8", ""], ["PC", "HP", "C024-000949", "HIU_CTV001", "Cộng tác viên", "Trung tâm việc làm và trải nghiệm sinh viên", "Văn phòng", "Core i5 4570", "8", ""], ["Laptop", "Lenovo", "", "", "Nguyễn Thị Hồng", "Trung tâm việc làm và trải nghiệm sinh viên", "Văn phòng", "Core 7 240H", "16", "X"], ["Laptop", "Lenovo", "", "", "Trần Thị Ngọc Quỳnh", "Trung tâm việc làm và trải nghiệm sinh viên", "Văn phòng", "Core 7 240H", "16", "X"], ["Laptop", "Lenovo", "", "", "Võ Thị Diễm Trang", "Trung tâm việc làm và trải nghiệm sinh viên", "Văn phòng", "Core 7 240H", "16", "X"], ["Laptop", "Lenovo", "", "Vũ Thị Xuân Hồng", "Phạm Thị Diễm Hồng", "Trung tâm việc làm và trải nghiệm sinh viên", "Văn phòng", "Core 7 240H", "16", "X"], ["Laptop", "Lenovo", "C024-000555", "HIU_HUYLQ", "Lê Chí Lợi", "Phòng Công nghệ thông tin", "KHO", "Core i5 8265", "8", ""], ["Laptop", "Dell", "C024-000502", "HIU_CONGNT(LAP)", "Nguyễn Thành Công", "Viện Đào tạo Sau đại học – Đào tạo liên tục", "Văn phòng", "Core i5 7200U", "8", ""], ["PC", "Dell", "C024-000652", "HIU_DUNGNP", "Nguyễn Phương Dung", "Viện Đào tạo Sau đại học – Đào tạo liên tục", "Văn phòng", "Core i3 8100", "8", ""], ["Laptop", "Dell", "C024-000556", "C024-15-2VSDH1", "Dùng chung", "Viện Đào tạo Sau đại học – Đào tạo liên tục", "Văn phòng", "Core i5 7200U", "8", ""], ["Laptop", "Dell", "C024-000557", "C024-15-2VSDH2", "Dùng chung", "Viện Đào tạo Sau đại học – Đào tạo liên tục", "Văn phòng", "Core i5 7200U", "8", ""], ["PC", "HP", "C024-000947", "HIU_ANHCNK", "Cao Nữ Kim Anh", "Viện Đào tạo Sau đại học – Đào tạo liên tục", "Văn phòng", "Core i5 4570", "8", ""], ["PC", "HP", "C024-000946", "HIU_CONGNT", "Nguyễn Thành Công", "Viện Đào tạo Sau đại học – Đào tạo liên tục", "Văn phòng", "Core i5 4570", "8", ""], ["Laptop", "Lenovo", "C024-025207", "HIU_DUNGNP", "Nguyễn Phương Dung", "Viện Đào tạo Sau đại học – Đào tạo liên tục", "Văn phòng", "AMD Ryzen™ 5 5600U", "8", ""], ["PC", "HP", "C024-000787", "HIU_LYNX", "Nguyễn Xuân Lý", "Viện Đào tạo Sau đại học – Đào tạo liên tục", "Văn phòng", "Core i5 4590", "8", ""], ["PC", "HP", "C024-000944", "HIU_THIENDQ", "Đỗ Quang Thiện", "Viện Đào tạo Sau đại học – Đào tạo liên tục", "Văn phòng", "Core i5 4590", "8", ""], ["PC", "Dell", "C024-000653", "HIU_THUYPDC", "Phan Đồng Châu Thủy", "Viện Đào tạo Sau đại học – Đào tạo liên tục", "Văn phòng", "Core i3 8100", "4", ""], ["PC", "HP", "C024-000786", "HIU_YPTN", "Phạm Thị Như Ý", "Phòng Công nghệ thông tin", "KHO", "Core i5 4570", "8", ""], ["PC", "OEM", "C024-000961", "HIU_LOINT", "Nguyễn Tấn Lợi", "Viện Đào tạo Sau đại học – Đào tạo liên tục", "Văn phòng", "Core i7 6700", "16", ""], ["PC", "Dell", "C024-000639", "HIU_TUNGDT", "Nguyễn Thị Thu Hậu", "Viện Đào tạo Sau đại học – Đào tạo liên tục", "Văn phòng", "Core i3 8100", "4", ""], ["Laptop", "Dell", "C024-000504", "HIU_VUTL", "Trần Lâm Vũ", "Viện Đào tạo Sau đại học – Đào tạo liên tục", "Văn phòng", "Core i5 7200U", "8", ""], ["Laptop", "OEM", "C024-000575", "", "Dùng chung", "Viện Đào tạo Sau đại học – Đào tạo liên tục", "Văn phòng", "", "", ""], ["PC", "Lenovo", "C024-025115", "", "Phan Thị Như Huỳnh", "Viện Đào tạo Sau đại học – Đào tạo liên tục", "Văn phòng", "Core i3-10105", "8", "x"], ["PC", "Lenovo", "C024-025119", "", "Ngô Xuân Trâm", "Viện Đào tạo Sau đại học – Đào tạo liên tục", "Văn phòng", "Core i3-10105", "8", "x"], ["Laptop", "Lenovo", "", "Vũ Thị Xuân Hồng", "Phạm Thị Anh Thi", "Viện Đào tạo Sau đại học – Đào tạo liên tục", "Văn phòng", "Core 7 240H", "16", "X"], ["PC", "Lenovo", "C024-000945", "HIU_HUNGTV", "Trần Văn Hùng", "Viện Đào tạo trực tuyến", "Văn phòng khoa", "Core i5 9400", "8", ""], ["PC", "Lenovo", "C024-025187", "", "Vy Hoàng Bảo Thy", "Viện Đào tạo trực tuyến", "Văn phòng", "Core i3-10105", "8", "x"], ["Laptop", "Dell", "C024-000560", "HIU_THINHNT(LAP)", "Dùng chung", "Viện Đào tạo và Hợp tác quốc tế", "Văn phòng", "Core i5 7200U", "8", ""], ["PC", "HP", "C024-001271", "C024-16-ANPTT2", "Phạm Thị Thùy An", "Phòng Công nghệ thông tin", "KHO", "Core i5 4590", "8", "x"], ["PC", "HP", "C024-000774", "HIU_NHUNGNTH", "Nguyễn Thị Hồng Nhung", "Viện Đào tạo và Hợp tác quốc tế", "Văn phòng", "Core i5 4570", "8", ""], ["PC", "Dell", "C024-000628", "", "Trần Thị Sáng", "Trung tâm thông tin - Thư viện", "Thư viện", "Core i3 8100", "4", "x"], ["Laptop", "Dell", "C024-000522", "HIU_HAPTB", "Phạm Thị Bích Hà", "Khoa Khoa học Xã hội & Nhân văn", "Văn phòng", "Core i5 7200U", "8", ""], ["PC", "Dell", "C024-000666", "HIU_HUONGVTL", "Nguyễn Thanh Thiên", "Khoa Khoa học Xã hội & Nhân văn", "Văn phòng", "Core i3 8100", "8", "x"], ["PC", "Dell", "C024-000730", "C024-81-NT", "NHA THUỐC", "Công Ty Tnhh Dịch Vụ Y Nha Dược Hồng Bàng", "NHA THUỐC", "Core i3 8100", "8", ""], ["Laptop", "Lenovo", "C024-025195", "C024-06-BINHNQ", "Nguyễn Quốc Bình", "Khoa Dược", "Văn phòng", "AMD Ryzen™ 5 5600U", "8", ""], ["PC", "HP", "C024-000806", "C024-06-BMDLDS", "Giảng viên bộ môn", "Khoa Dược", "BM. Dược Lý - Dược Lâm Sàng", "Core i5 4570", "8", ""], ["PC", "HP", "C024-000745", "C024-06-CUATT", "Trần Thị Của", "Khoa Dược", "BM. Hóa dược", "Core i5 4590", "8", ""], ["PC", "HP", "C024-000601", "C024-06-HALHH", "Lý Hồng Hương Hạ", "Khoa Dược", "Văn phòng khoa", "Core i5 4590", "8", ""], ["PC", "Dell", "C024-000743", "C024-06-HANHNT2", "Nguyễn Thị Hạnh", "Khoa Dược", "BM. Bào Chế", "Core i3 8100", "8", ""], ["PC", "HP", "C024-000739", "C024-06-HAUDQ", "Dương Quốc Hậu", "Khoa Dược", "Phòng TH Hóa Học Khoa Dược", "Core i5 4590", "8", ""], ["PC", "Dell", "C024-000729", "C024-06-LONGQK1", "Quách Kim Long", "Khoa Dược", "Văn phòng khoa", "Core i3 8100", "8", ""], ["PC", "HP", "C024-001236", "C024-06-MANTT", "Từ Tiểu Mân", "Khoa Dược", "BM. Quản Lý Dược", "Core i5 4570", "8", ""], ["PC", "Dell", "C024-001246", "C024-06-TDTT84", "Đỗ Thị Thu Thủy", "Khoa Dược", "Văn phòng khoa", "Core i3 8100", "8", ""], ["PC", "Dell", "C024-000599", "C024-06-TNHM2", "Nguyễn Huỳnh Mỹ Trinh", "Khoa Dược", "Văn phòng khoa", "Core i3 8100", "8", ""], ["PC", "Dell", "C024-000598", "C024-06-TRUNGNT", "Nguyễn Thành Trung", "Khoa Dược", "Văn phòng khoa", "Core i3 8100", "8", ""], ["PC", "Lenovo", "C024-000728", "C024-06-DATNT2", "Nguyễn Trọng Đạt", "Khoa Dược", "Văn phòng khoa", "Core i5 9400", "8", ""], ["Laptop", "Dell", "C024-000494", "C024-06-HONGTTT", "Trần Thị Thu Hồng", "Khoa Dược", "BM. Dược Lý - Dược Lâm Sàng", "Core i5 7200U", "8", ""], ["Laptop", "Lenovo", "C024-025194", "C024-06-THUYNTT", "Nguyễn Thị Thu Thuỷ", "Khoa Dược", "Văn phòng", "AMD Ryzen™ 5 5600U", "8", ""], ["PC", "HP", "C024-000776", "HIU_PTHHPTKD", "Máy đo HPLC", "Khoa Dược", "TH. Khoa Học Dược", "Core i5 4570", "8", ""], ["PC", "OEM", "C024-000680", "C024-06-PHUCNH", "Nguyễn Hữu Phúc", "Khoa Dược", "VP Khoa", "Core i3 3240", "8", "X"], ["PC", "Lenovo", "C024-025230", "C024-06-DATNT", "Nguyễn Thành Đạt", "Khoa Dược", "BM. Dược Liệu Thực Vật", "Core i3-10105", "8", ""], ["PC", "Lenovo", "C024-025234", "C024-06-DATTX", "Trần Xuân Đạt", "Khoa Dược", "Phòng TH Hóa học Khoa Dược", "Core i3-10105", "8", ""], ["PC", "Lenovo", "C024-025229", "C024-06-DLDLS", "Nguyễn Huỳnh Mỹ Trinh", "Khoa Dược", "Phòng TH Dược lý Khoa Dược", "Core i3-10105", "8", ""], ["PC", "Lenovo", "C024-025233", "C024-06-HANHNT", "Nguyễn Thị Hạnh", "Khoa Dược", "Phòng TH Thực vật Khoa Dược", "Core i3-10105", "8", ""], ["PC", "Lenovo", "C024-025235", "C024-06-HAUTN", "Uông Thị Ngọc Hà", "Khoa Dược", "Phòng TH Hóa Học Khoa Dược", "Core i3-10105", "8", ""], ["PC", "Lenovo", "C024-025232", "C024-06-MAIPTN", "Phạm Thị Ngọc Mai", "Khoa Dược", "Phòng TH Dược lý Khoa Dược", "Core i3-10105", "8", ""], ["PC", "Lenovo", "C024-025228", "C024-06-NGHIALT", "Lê Trọng Nghĩa", "Khoa Dược", "Phòng TH Dược lý Khoa Dược", "Core i3-10105", "8", ""], ["PC", "Lenovo", "C024-025231", "C024-06-NNTA", "Nguyễn Thị Ánh Nguyệt", "Khoa Dược", "VP BM Bào chế - Hóa lý Khoa Dược", "Core i3-10105", "8", ""], ["PC", "Lenovo", "C024-025227", "C024-06-QHTT", "Huỳnh Thị Tố Quyên", "Khoa Dược", "BM. Hóa Phân Tích", "Core i3-10105", "8", ""], ["PC", "HP", "C024-019583", "HIU_PTHDLTV1", "Máy quang phổ UV-VIS", "Khoa Dược", "BM. Dược liệu - thực vật", "Core i5-4590", "8", ""], ["PC", "HP", "", "HIU_PTHDLTV2", "Máy đo HPLC", "Khoa Dược", "Phòng TH Khoa Học Dược", "Core i5-12500", "8", ""], ["PC", "OEM", "C024-019628", "HIU_PTHHPT1", "Máy UV-VIS", "Khoa Dược", "BM. Hóa Phân Tích", "Core i3-3240", "4", ""], ["PC", "OEM", "C024-019584", "HIU_PTHHD", "Máy UV-VIS", "Khoa Dược", "BM. Hóa dược", "Core i3-3240", "4", ""], ["PC", "HP", "", "", "Máy đo HPLC", "Khoa Dược", "BM. Dược Liệu Thực Vật", "Core i5-4590", "8", ""], ["PC", "OEM", "", "HIU_KDChamBai", "Máy chấm trắc nghiệm", "Khoa Dược", "VP Khoa", "Core 2 Duo E8400", "4", ""], ["Laptop", "Lenovo", "C024-025260", "C024-12-2HNT", "Nguyễn Thị Hương", "Khoa Kỹ Thuật Phục Hồi Chức Năng", "Văn phòng khoa", "AMD Ryzen™ 5 5600U", "8", ""], ["PC", "Dell", "C024-000690", "C024-12-HUONGNT", "Nguyễn Thị Hương", "Khoa Kỹ Thuật Phục Hồi Chức Năng", "Văn phòng khoa", "Core i3 8100", "8", ""], ["PC", "Dell", "C024-001262", "C024-12-PHATHV", "Huỳnh Văn Phát", "Khoa Kỹ Thuật Phục Hồi Chức Năng", "Văn phòng khoa", "Core i3 8100", "8", ""], ["PC", "Dell", "C024-000691", "C024-12-1HANNTN", "Nguyễn Trần Ngọc Hân", "Khoa Kỹ Thuật Phục Hồi Chức Năng", "Văn phòng khoa", "Core i3 8100", "8", ""], ["PC", "Dell", "C024-000692", "C024-12-TTT1", "Trần Thị Thu Trang", "Khoa Kỹ Thuật Phục Hồi Chức Năng", "Văn phòng khoa", "Core i3 8100", "8", ""], ["PC", "Lenovo", "C024-025222", "C024-12-DIEPPT", "Phạm Thị Diệp", "Khoa Kỹ Thuật Phục Hồi Chức Năng", "Văn phòng khoa", "Core i3-10105", "8", ""], ["PC", "Lenovo", "C024-025219", "C024-12-NHULTH", "Lê Thị Huỳnh Như", "Khoa Kỹ Thuật Phục Hồi Chức Năng", "Văn phòng khoa", "Core i3-10105", "8", ""], ["PC", "Lenovo", "C024-025221", "C024-12-THNT", "Hoàng Ngọc Tuyết Trinh", "Khoa Kỹ Thuật Phục Hồi Chức Năng", "Văn phòng khoa", "Core i3-10105", "8", ""], ["PC", "Dell", "C024-000591", "C024-11-ANHHT", "Hà Thị Anh", "Khoa Xét nghiệm Y học", "Văn phòng khoa", "Core i3 8100", "8", ""], ["PC", "HP", "C024-000810", "C024-11-ANHNTN", "Nguyễn Thị Ngọc Anh", "Khoa Xét Nghiệm Y học", "BM. Vi Sinh", "Core i5 4570", "8", ""], ["PC", "Dell", "C024-000595", "C024-11-HAIVH", "Vũ Hồng Hải", "Khoa Xét nghiệm Y học", "Văn phòng khoa", "Core i3 8100", "8", ""], ["PC", "Dell", "C024-000593", "C024-11-HANHTTM", "Trần Thị Mỹ Hạnh", "Khoa Xét nghiệm Y học", "Văn phòng khoa", "Core i3 8100", "8", ""], ["PC", "Dell", "C024-000592", "C024-11-HAULP", "Lê Phúc Hậu", "Khoa Xét nghiệm Y học", "Văn phòng khoa", "Core i3 8100", "8", ""], ["PC", "HP", "C024-000815", "C024-11-KYSINH1", "Giảng viên bộ môn", "Khoa Xét Nghiệm Y học", "PTH.Ký Sinh", "Core i5 4570", "8", ""], ["PC", "HP", "C024-000808", "C024-11-NGANT", "Nguyễn Thị Nga", "Khoa Xét Nghiệm Y học", "BM. Huyết Học", "Core i5 4570", "8", ""], ["PC", "HP", "C024-000816", "C024-11-NHATNT", "Nguyễn Thành Nhật", "Khoa Xét Nghiệm Y học", "Văn phòng khoa", "Core i5 4590", "8", ""], ["PC", "HP", "C024-000809", "C024-11-PHUNGTTK", "Trần Thị Kim Phụng", "Khoa Xét Nghiệm Y học", "Văn phòng khoa", "Core i5 4570", "8", ""], ["PC", "Dell", "C024-000594", "C024-11-TTT", "Trịnh Thị Thương", "Khoa Xét nghiệm Y học", "Văn phòng khoa", "Core i3 8100", "8", ""], ["PC", "Lenovo", "C024-025236", "C024-11-ANHPTH", "Phan Thị Hoàng Anh", "Khoa Xét Nghiệm Y học", "TH. Vi Sinh 1", "Core i3-10105", "8", ""], ["PC", "Lenovo", "C024-025238", "C024-11-HANDTN", "Đặng Thị Ngọc Hân", "Khoa Xét Nghiệm Y học", "BM. Ký Sinh", "Core i3-10105", "8", ""], ["PC", "Lenovo", "C024-025237", "C024-11-LINHNTT", "Nguyễn Thị Thùy Linh", "Khoa Xét Nghiệm Y học", "TH. Vi Sinh 1", "Core i3-10105", "8", ""], ["PC", "Lenovo", "C024-025239", "C024-11-LYNTS", "Nguyễn Thị Sa Ly", "Khoa Xét Nghiệm Y học", "BM. Huyết Hoc", "Core i3-10105", "8", ""], ["PC", "Lenovo", "C024-025240", "C024-11-TRUNGNV", "Nguyễn Văn Trung", "Khoa Xét Nghiệm Y học", "BM. Hoa Sinh", "Core i3-10105", "8", ""], ["PC", "OEM", "", "HIU_PTHHS1", "Máy đọc Elisa", "Khoa Xét Nghiệm Y học", "TH. Hóa Sinh", "Core i3-4170", "4", ""], ["PC", "OEM", "", "HIU_PTHHS2", "Máy đọc Elisa", "Khoa Xét Nghiệm Y học", "TH. Hóa Sinh", "Core i3-3220", "4", ""], ["PC", "OEM", "C024-000185", "HIU_PTHHS3", "Máy đo Elisa", "Khoa Xét Nghiệm Y học", "TH. Hóa Sinh", "Pentium G4400", "8", ""], ["Laptop", "HP", "", "HIU_HHMAYSOIGEL", "Máy soi Gel 1", "Khoa Xét Nghiệm Y học", "TH. Huyết Học", "Pentium 6405U", "4", ""], ["Laptop", "LENOVO", "", "Máy soi Gel", "Máy soi Gel 2", "Khoa Xét Nghiệm Y học", "TH. Huyết Học", "Core i3 1215U", "8", ""], ["PC", "Dell", "C024-026330", "C024-11-KYSINH2", "Máy chạy kính hiển vi 3 mắt", "Khoa Xét Nghiệm Y học", "PTH.Ký Sinh", "i5-12400  2.50 GHz", "8", "X"], ["PC", "Dell", "C024-000686", "C024-14-KHANHNQ", "Nguyễn Quốc Khánh", "Khoa Y", "BM. Hóa Sinh", "Core i3 8100", "8", ""], ["PC", "HP", "C024-000490", "C024-14-TDNTP", "Đoàn Nguyễn Thị Phương Thanh", "Khoa Y", "VPBM. Vi Sinh", "Core i5 4590", "8", ""], ["PC", "HP", "C024-000817", "C024-14-TRAMLTB", "Lê Thị Bích Trâm", "Khoa Y", "BM Ký sinh Khoa Y", "Core i5 4570", "8", ""], ["PC", "Lenovo", "C024-025224", "C024-14-NHILTM", "Lê Trần Mỹ Nhi", "Khoa Y", "VPBM. Vi Sinh", "Core i3-10105", "8", ""], ["PC", "Lenovo", "C024-025225", "C024-14-XUANPTT", "Phan Thị Thanh Xuân", "Khoa Y", "BM. Hoá Hoá Sinh", "Core i3-10105", "8", ""], ["PC", "HP", "C024-000818", "", "Máy UV -1800", "Khoa Y", "BM Vi Sinh", "Core i5-4590", "4", ""], ["PC", "HP", "", "", "Máy xét nghiệm sinh hoá", "Khoa Y", "BM. Hóa Sinh", "Core i5 12500", "8", ""], ["Laptop", "Dell", "C024-000586", "C024-17-2SANGND", "Nghiêm Đình Sáng", "Phòng Công nghệ thông tin", "Văn phòng", "Core i5 7200U", "6", ""], ["PC", "OEM", "C024-001231", "C024-17-CAMNGT", "Máy xem Camera", "Phòng Công nghệ thông tin", "Server D2", "Core i7 3770", "6", ""], ["PC", "ASUS", "C024-000960", "HIU_KHAIDB", "Đinh Bá Khai", "Phòng Công nghệ thông tin", "Văn phòng", "Core i5 4460", "8", ""], ["PC", "OEM", "C024-001232", "C024-17-MAYIN", "Server may in", "Phòng Công nghệ thông tin", "Server D2", "Core i5 4460", "8", ""], ["PC", "Dell", "C024-001242", "C024-17-NGT", "Dùng chung", "Phòng Công nghệ thông tin", "Văn phòng", "Core i3 8100", "8", ""], ["Laptop", "Dell", "C024-000493", "#VALUE!", "", "Phòng Công nghệ thông tin", "KHO", "Core i5 7200U", "8", ""], ["PC", "HP", "C024-001249", "C024-20-ANHLHP", "Lê Hà Phương Anh", "Phòng Hành Chánh - Nhân sự", "Trạm Y Tế", "Core i5 4590", "8", ""], ["PC", "HP", "C024-001269", "C024-20-1HUONGNTK", "Nguyễn Thị Kim Hưởng", "Phòng Hành Chánh - Nhân sự", "Trạm Y Tế", "Core i5 4570", "8", "x"], ["PC", "HP", "C024-001237", "C024-18-CAMNGT", "Máy xem Camera", "Phòng Quản lý Cơ sở vật chất", "Văn phòng", "Core i5 4570", "16", ""], ["PC", "Dell", "C024-000679", "C024-18-CHINHNC", "Nguyễn Công Chính", "Phòng Quản lý Cơ sở vật chất", "Văn phòng", "Core i3 8100", "8", ""], ["PC", "Dell", "C024-000681", "C024-18-HIEUNT4", "Nguyễn Thành Hiếu", "Phòng Quản lý Cơ sở vật chất", "Phòng kỹ thuật", "Core i3 8100", "8", ""], ["PC", "HP", "C024-001235", "C024-18-VINHLH", "Lê Hiển Vinh", "Phòng Quản lý Cơ sở Vật chất", "Phòng kỹ thuật", "Core i5 4590", "8", ""], ["PC", "Dell", "C024-000602", "C024-18-DUYLQ", "LÊ QUỐC DUY", "Phòng Quản lý Cơ sở vật chất", "Văn phòng", "Core i3 8100", "8", "X"], ["Laptop", "Dell", "C024-000530", "C024-18-KTNGT1", "Kỹ thuật", "Phòng Quản lý Cơ sở vật chất", "Phòng kỹ thuật", "Core i5 4210U", "8", ""], ["Laptop", "Dell", "C024-000531", "C024-18-KTNGT2", "Kỹ thuật", "Phòng Quản lý Cơ sở vật chất", "Phòng kỹ thuật", "Core i5 7200U", "8", ""], ["PC", "Dell", "C024-001221", "C024-27-SV01", "Máy sinh viên tra cứu", "Trung tâm thông tin - Thư viện", "Thư viện (CS D2)", "Core i3 8100", "4", ""], ["PC", "Dell", "C024-001223", "C024-27-SV02", "Máy sinh viên tra cứu", "Trung tâm thông tin - Thư viện", "Thư viện (CS D2)", "Core i3 8100", "4", ""], ["PC", "Dell", "C024-001225", "C024-27-SV03", "Máy sinh viên tra cứu", "Trung tâm thông tin - Thư viện", "Thư viện (CS D2)", "Core i3 8100", "4", ""], ["PC", "Dell", "C024-001224", "C024-27-SV04", "Máy sinh viên tra cứu", "Trung tâm thông tin - Thư viện", "Thư viện (CS D2)", "Core i3 8100", "4", ""], ["PC", "Dell", "C024-001218", "C024-27-SV05", "Máy sinh viên tra cứu", "Trung tâm thông tin - Thư viện", "Thư viện (CS D2)", "Core i3 8100", "4", ""], ["PC", "Dell", "C024-001219", "C024-27-SV06", "Máy sinh viên tra cứu", "Trung tâm thông tin - Thư viện", "Thư viện (CS D2)", "Core i3 8100", "4", ""], ["PC", "HP", "C024-000933", "C024-27-SV07", "Máy sinh viên tra cứu", "Trung tâm thông tin - Thư viện", "Thư viện (CS D2)", "Core I5 4570", "8", ""], ["PC", "Dell", "C024-001220", "C024-27-SV08", "Máy sinh viên tra cứu", "Trung tâm thông tin - Thư viện", "Thư viện (CS D2)", "Core i3 8100", "4", ""], ["PC", "Dell", "C024-001215", "C024-27-TANHT", "Huỳnh Thanh Tấn", "Trung tâm thông tin - Thư viện", "Thư viện (CS D2)", "Core i3 8100", "8", ""], ["Laptop", "Dell", "C024-000532", "HIU_NGHIDN", "Nguyễn Thị Diệu Thảo", "Hội Đồng Trường", "Văn phòng", "Core i5 7200U", "8", ""], ["Laptop", "Dell", "C024-000547", "HIU_TIENDTM", "Phan Thị Hồng", "Hội Đồng Trường", "Văn phòng", "Core i5 7200U", "8", ""], ["PC", "HP", "C024-000931", "C024-81-CAM299", "Máy xem Camera", "Công Ty Tnhh Dịch Vụ Y Nha Dược Hồng Bàng", "Phòng server", "Core i5 4590", "8", ""], ["PC", "Dell", "C024-000708", "C024-81-CHAUPTB", "Nguyễn Trúc Phương", "Công Ty Tnhh Dịch Vụ Y Nha Dược Hồng Bàng", "Reception", "Core i3 8100", "8", ""], ["Laptop", "Lenovo", "C024-025265", "C024-81-DAOLT", "Lê Thị Đào", "Công Ty Tnhh Dịch Vụ Y Nha Dược Hồng Bàng", "Reception", "AMD Ryzen™ 5 5600U", "8", ""], ["PC", "HP", "C024-000799", "C024-81-DV1", "Sinh viên thực hành", "Công Ty Tnhh Dịch Vụ Y Nha Dược Hồng Bàng", "Phòng DV1", "Core I5 4570", "8", ""], ["PC", "HP", "C024-000789", "C024-81-DV2", "Sinh viên thực hành", "Công Ty Tnhh Dịch Vụ Y Nha Dược Hồng Bàng", "Phòng DV2", "Core I5 4570", "8", ""], ["PC", "HP", "C024-000800", "C024-81-DV3", "Sinh viên thực hành", "Công Ty Tnhh Dịch Vụ Y Nha Dược Hồng Bàng", "Phòng DV3", "Core I5 4570", "8", ""], ["PC", "HP", "C024-000915", "C024-81-LOCNC", "Nguyễng Cao Lộc", "Công Ty Tnhh Dịch Vụ Y Nha Dược Hồng Bàng", "Reception", "Core i5 4590", "8", ""], ["PC", "HP", "C024-000790", "C024-81-LS2-2", "Sinh viên thực hành", "Công Ty Tnhh Dịch Vụ Y Nha Dược Hồng Bàng", "Phòng LS2", "Core I5 4570", "8", ""], ["PC", "HP", "C024-000795", "C024-81-LS2-3", "Sinh viên thực hành", "Công Ty Tnhh Dịch Vụ Y Nha Dược Hồng Bàng", "Phòng LS2", "Core I5 4570", "8", ""], ["PC", "HP", "C024-000796", "C024-81-LS2-4", "Sinh viên thực hành", "Công Ty Tnhh Dịch Vụ Y Nha Dược Hồng Bàng", "Phòng LS2", "Core I5 4570", "8", ""], ["PC", "HP", "C024-000794", "C024-81-LS2-6", "Sinh viên thực hành", "Công Ty Tnhh Dịch Vụ Y Nha Dược Hồng Bàng", "Phòng LS2", "Core I5 4570", "8", ""], ["PC", "HP", "C024-000801", "C024-81-LS2-7", "Sinh viên thực hành", "Công Ty Tnhh Dịch Vụ Y Nha Dược Hồng Bàng", "Phòng LS2", "Core I5 4570", "8", ""], ["PC", "HP", "C024-000802", "C024-81-LS3-4", "Sinh viên thực hành", "Công Ty Tnhh Dịch Vụ Y Nha Dược Hồng Bàng", "Phòng LS3", "Core I5 4570", "8", ""], ["PC", "HP", "C024-000792", "C024-81-LS3-2", "Sinh viên thực hành", "Công Ty Tnhh Dịch Vụ Y Nha Dược Hồng Bàng", "Phòng LS3", "Core I5 4570", "8", ""], ["PC", "HP", "C024-000804", "C024-81-LS3-3", "Sinh viên thực hành", "Công Ty Tnhh Dịch Vụ Y Nha Dược Hồng Bàng", "Phòng LS3", "Core I5 4570", "8", ""], ["PC", "Lenovo", "C024-025213", "C024-81-LS2-1", "Sinh viên thực hành", "Công Ty Tnhh Dịch Vụ Y Nha Dược Hồng Bàng", "Phòng LS 2", "Core i3-10105", "8", ""], ["PC", "HP", "C024-000798", "C024-81-LS3-6", "Sinh viên thực hành", "Công Ty Tnhh Dịch Vụ Y Nha Dược Hồng Bàng", "Phòng LS3", "Core I5 4570", "8", ""], ["PC", "HP", "C024-000803", "C024-81-LS3-7", "Sinh viên thực hành", "Công Ty Tnhh Dịch Vụ Y Nha Dược Hồng Bàng", "Phòng LS3", "Core I5 4570", "8", ""], ["PC", "Lenovo", "C024-025214", "C024-81-LS2-5", "Sinh viên thực hành", "Công Ty Tnhh Dịch Vụ Y Nha Dược Hồng Bàng", "Phòng LS 2", "Core i3-10105", "8", ""], ["PC", "HP", "C024-000805", "C024-81-LS4-2", "Sinh viên thực hành", "Công Ty Tnhh Dịch Vụ Y Nha Dược Hồng Bàng", "Phòng LS5", "Core I5 4570", "8", ""], ["PC", "HP", "C024-000793", "C024-81-LS5-1", "Sinh viên thực hành", "Công Ty Tnhh Dịch Vụ Y Nha Dược Hồng Bàng", "Phòng LS5", "Core I5 4570", "8", ""], ["PC", "HP", "C024-000791", "C024-81-PT", "Sinh viên thực hành", "Công Ty Tnhh Dịch Vụ Y Nha Dược Hồng Bàng", "Phòng Tiểu Phẫu", "Core I5 4570", "8", ""], ["PC", "HP", "C024-000797", "C024-81-THUYNN", "Nguyễn Ngọc Thúy", "Công Ty Tnhh Dịch Vụ Y Nha Dược Hồng Bàng", "Phòng Trưởng PK", "Core I5 4570", "8", ""], ["PC", "HP", "C024-001212", "C024-81-TRAMLB", "Lê Bảo Trân", "Công Ty Tnhh Dịch Vụ Y Nha Dược Hồng Bàng", "Reception", "Core i5 4570", "8", ""], ["Laptop", "Dell", "", "HIU_PHIM", "Máy đọc Phim", "Công Ty Tnhh Dịch Vụ Y Nha Dược Hồng Bàng", "Phòng Cấp phát", "Core i3 - 1115G4", "8", ""], ["PC", "OEM", "", "HIU_XQ", "Máy XQ", "Công Ty Tnhh Dịch Vụ Y Nha Dược Hồng Bàng", "Phòng XQ", "Core i7-12700F", "32", ""], ["PC", "Lenovo", "C024-025215", "C024-81-LS3-1", "Sinh viên thực hành", "Công Ty Tnhh Dịch Vụ Y Nha Dược Hồng Bàng", "Phòng LS 3", "Core i3-10105", "8", ""], ["PC", "Lenovo", "C024-025212", "C024-81-LS3-5", "Sinh viên thực hành", "Công Ty Tnhh Dịch Vụ Y Nha Dược Hồng Bàng", "Phòng LS 3", "Core i3-10105", "8", ""], ["PC", "Lenovo", "C024-025211", "C024-81-LS4-1", "Sinh viên thực hành", "Công Ty Tnhh Dịch Vụ Y Nha Dược Hồng Bàng", "Phòng LS 4", "Core i3-10105", "8", ""], ["Laptop", "Dell", "C024-000496", "HIU_NHUNGNTH2", "Phạm Trần Ánh Ngọc", "Công Ty Tnhh Dịch Vụ Y Nha Dược Hồng Bàng", "Văn phòng", "Core i5 7200U", "8", ""], ["PC", "HP", "C024-000932", "", "Sinh viên thực hành", "Công Ty Tnhh Dịch Vụ Y Nha Dược Hồng Bàng", "Sảnh lễ tân", "Core i5 4590", "8", "X"], ["PC", "HP", "C024-000936", "", "Sinh viên thực hành", "Công Ty Tnhh Dịch Vụ Y Nha Dược Hồng Bàng", "Sảnh lễ tân", "Core i5 4570", "8", "X"], ["Laptop", "Lenovo", "", "C024-81-LS3-1", "Sinh viên thực hành", "Công Ty Tnhh Dịch Vụ Y Nha Dược Hồng Bàng", "Phòng thực hành", "CoreI7-13650HX", "32", "X"], ["Laptop", "Lenovo", "", "Vũ Thị Xuân Hồng", "Sinh viên thực hành", "Công Ty Tnhh Dịch Vụ Y Nha Dược Hồng Bàng", "Phòng thực hành", "CoreI7-13650HX", "32", "X"], ["PC", "Dell", "C024-000605", "C024-20-1LLB", "Lương Bội Linh", "Pháp Chế", "Văn phòng", "Core i3 8100", "8", "x"], ["PC", "HP", "C024-000490", "", "", "Khoa Y", "Phòng Server", "i5 4590", "8GB", ""], ["PC", "HP", "C024-000491", "", "", "Khoa Y", "Phòng Server", "i5 4570", "8GB", ""], ["PC", "Lenovo", "C024-030068", "", "", "Phòng Công nghệ thông tin", "KHO", "Core i5-12400", "8", ""], ["PC", "Lenovo", "C024-030067", "", "", "Phòng Công nghệ thông tin", "KHO", "Core i5-12400", "8", ""], ["Laptop", "Lenovo", "", "", "Trần Đức Tài", "Phòng Tài chính - Kế toán", "Văn phòng", "Core 7 240H", "32", ""], ["Laptop", "Lenovo", "", "", "Nguyễn Thị Thúy Nga", "Phòng Tài chính - Kế toán", "Văn phòng", "Core 7 240H", "32", ""], ["Laptop", "Lenovo", "", "", "Trần Đề Kháng", "Phòng Quản lý Cơ sở vật chất", "Văn phòng", "Core 7 240H", "32", ""], ["Laptop", "Lenovo", "", "", "Vũ Thị Thanh Hương", "Phòng Quản lý Cơ sở vật chất", "Văn phòng", "i5 - 13420H", "16", ""], ["Laptop", "Lenovo", "", "", "Nguyễn Thị Linh Tuyền", "Khoa Dược", "Văn phòng", "i5 - 13420H", "16", ""], ["", "", "", "", "", "", "", "i5 - 13420H", "16", ""], ["", "", "", "", "", "", "", "i5 - 13420H", "16", ""], ["", "", "", "", "Lê Đức Cường", "", "", "i5 - 13420H", "16", ""], ["PC", "HP", "C024-000773", "", "Nguyễn Chí Vinh", "Phòng Quản lý Cơ sở vật chất", "Văn phòng", "Core i5 4590", "8GB", "x"], ["MT VĂN PHÒNG", "", "MT THEO MÁY TH", "", "", "MT PHÒNG MÁY", "KHO", "", "", ""], ["", "", "", "", "", "", "MÁY ĐÃ QUA SỬ DỤNG CHƯA CẤP", "", "", ""], ["", "", "", "", "", "", "", "", "", ""], ["", "", "", "", "", "", "", "", "", ""], ["", "", "", "", "", "307", "", "", "", ""], ["11", "", "", "", "", "", "", "", "", ""], ["", "", "", "", "", "", "", "", "", ""], ["", "", "", "", "", "", "", "", "", ""], ["", "", "", "", "", "", "", "", "", ""], ["", "", "", "", "", "", "", "", "", ""], ["", "", "", "", "", "", "", "", "", ""], ["", "", "", "", "", "", "", "", "", ""], ["", "", "", "", "", "", "", "", "", ""], ["", "", "", "", "", "", "", "", "", ""], ["", "", "", "", "", "", "", "", "", ""], ["", "", "", "", "", "", "", "", "", ""], ["Đang sử dụng", "", "", "", "", "", "Chờ cấp", "", "", ""], ["", "", "", "", "", "", "", "", "", ""], ["", "", "", "", "", "", "", "", "", ""], ["", "", "", "", "", "", "", "", "", ""], ["", "", "", "", "", "", "", "", "", ""], ["", "", "", "", "", "", "", "", "", ""], ["Văn phòng", "", "", "", "", "", "", "", "", ""]];
+    let authMode = "signin";
+    let allDevices = [];
+    let filteredDevices = [];
+    let currentPage = 1;
+    const pageSize = 15;
 
-let filteredDevices = [...allDevices];
-let currentPage = 1;
-const pageSize = 15;
-
-function init() {
-  populateDeptFilter();
-  updateKPIs();
-  renderTable();
-}
-
-function updateKPIs() {
-  let total = allDevices.length;
-  let pcCount = 0, laptopCount = 0, warningCount = 0;
-  
-  allDevices.forEach(d => {
-    let type = (d[0] || '').toLowerCase();
-    if (type.includes('pc')) pcCount++;
-    else if (type.includes('lap') || type.includes('ipad') || type.includes('mac')) laptopCount++;
-    
-    let dc = String(d[9] || '').trim();
-    if (dc === '' || dc === '0' || dc.toLowerCase() === 'no') {
-      warningCount++;
-    }
-  });
-
-  document.getElementById('kpiTotal').innerText = total;
-  document.getElementById('kpiPC').innerText = pcCount;
-  document.getElementById('kpiLaptop').innerText = laptopCount;
-  document.getElementById('kpiWarning').innerText = warningCount;
-  document.getElementById('headerTotalBadge').innerText = total + ' thiết bị';
-}
-
-function populateDeptFilter() {
-  let depts = new Set();
-  allDevices.forEach(d => { if (d[5]) depts.add(d[5]); });
-  let sel = document.getElementById('deptFilter');
-  Array.from(depts).sort().forEach(dept => {
-    let opt = document.createElement('option');
-    opt.value = dept;
-    opt.textContent = dept;
-    sel.appendChild(opt);
-  });
-}
-
-function renderTable() {
-  let search = (document.getElementById('searchInput').value || '').toLowerCase();
-  let type = document.getElementById('typeFilter').value;
-  let brand = document.getElementById('brandFilter').value;
-  let dept = document.getElementById('deptFilter').value;
-  let dc = document.getElementById('dcFilter').value;
-
-  filteredDevices = allDevices.filter(d => {
-    let rowStr = (d[0] + ' ' + d[1] + ' ' + d[2] + ' ' + d[3] + ' ' + d[4] + ' ' + d[5] + ' ' + d[7]).toLowerCase();
-    if (search && !rowStr.includes(search)) return false;
-    if (type && d[0] !== type) return false;
-    if (brand && !(d[1] || '').toLowerCase().includes(brand.toLowerCase())) return false;
-    if (dept && d[5] !== dept) return false;
-    
-    let isJoined = String(d[9] || '').trim() === '1';
-    if (dc === 'joined' && !isJoined) return false;
-    if (dc === 'not_joined' && isJoined) return false;
-    return true;
-  });
-
-  currentPage = 1;
-  displayPage();
-}
-
-function displayPage() {
-  let tbody = document.getElementById('tableBody');
-  tbody.innerHTML = '';
-  let start = (currentPage - 1) * pageSize;
-  let end = Math.min(start + pageSize, filteredDevices.length);
-  let pageItems = filteredDevices.slice(start, end);
-
-  if (pageItems.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding: 24px; color: var(--ui-muted-fg);">Không tìm thấy thiết bị phù hợp.</td></tr>';
-  } else {
-    pageItems.forEach((d, idx) => {
-      let tr = document.createElement('tr');
-      let globalIdx = allDevices.indexOf(d);
-      
-      let typeBadge = 'badge-pc';
-      let typeLower = (d[0] || '').toLowerCase();
-      if (typeLower.includes('lap')) typeBadge = 'badge-laptop';
-      else if (typeLower.includes('ipad')) typeBadge = 'badge-ipad';
-
-      let isDc = String(d[9] || '').trim() === '1';
-      let dcHtml = isDc ? '<span class="device-badge badge-dc-yes">Đã Join</span>' : '<span class="device-badge badge-dc-no">Chưa</span>';
-
-      tr.innerHTML = `
-        <td style="text-align: center; color: var(--ui-muted-fg);">${start + idx + 1}</td>
-        <td><span class="device-badge ${typeBadge}">${d[0] || 'N/A'}</span></td>
-        <td><strong>${d[1] || ''}</strong></td>
-        <td><code>${d[2] || ''}</code></td>
-        <td><strong>${d[3] || 'N/A'}</strong></td>
-        <td>${d[4] || 'Chưa gán'}</td>
-        <td>${d[5] || 'N/A'}</td>
-        <td>${d[7] || ''} ${d[8] ? '• ' + d[8] + 'GB' : ''}</td>
-        <td>${dcHtml}</td>
-        <td style="text-align: center;">
-          <button class="ui-btn ghost sm" style="padding: 2px 6px;" onclick="openEditModal(${globalIdx})">✏️</button>
-        </td>
-      `;
-      tbody.appendChild(tr);
-    });
-  }
-
-  let totalPages = Math.ceil(filteredDevices.length / pageSize) || 1;
-  document.getElementById('recordCount').innerText = `Hiển thị ${pageItems.length} / ${filteredDevices.length} máy`;
-  document.getElementById('pageInfo').innerText = `Trang ${currentPage} / ${totalPages}`;
-}
-
-function prevPage() {
-  if (currentPage > 1) { currentPage--; displayPage(); }
-}
-function nextPage() {
-  let totalPages = Math.ceil(filteredDevices.length / pageSize) || 1;
-  if (currentPage < totalPages) { currentPage++; displayPage(); }
-}
-
-function resetFilters() {
-  document.getElementById('searchInput').value = '';
-  document.getElementById('typeFilter').value = '';
-  document.getElementById('brandFilter').value = '';
-  document.getElementById('deptFilter').value = '';
-  document.getElementById('dcFilter').value = '';
-  renderTable();
-}
-
-// Modal handling
-function openEditModal(globalIdx) {
-  let d = allDevices[globalIdx];
-  if (!d) return;
-  document.getElementById('editIndex').value = globalIdx;
-  document.getElementById('editType').value = d[0] || 'PC';
-  document.getElementById('editBrand').value = d[1] || 'Dell';
-  document.getElementById('editBarcode').value = d[2] || '';
-  document.getElementById('editName').value = d[3] || '';
-  document.getElementById('editUser').value = d[4] || '';
-  document.getElementById('editDept').value = d[5] || '';
-  document.getElementById('editCPU').value = d[7] || '';
-  document.getElementById('editRAM').value = d[8] || '';
-  document.getElementById('editDC').value = String(d[9] || '').trim() === '1' ? '1' : '0';
-  document.getElementById('editModal').classList.add('active');
-}
-
-function closeEditModal() {
-  document.getElementById('editModal').classList.remove('active');
-}
-
-function saveDeviceChanges() {
-  let idx = parseInt(document.getElementById('editIndex').value);
-  if (isNaN(idx) || !allDevices[idx]) return;
-  
-  allDevices[idx][0] = document.getElementById('editType').value;
-  allDevices[idx][1] = document.getElementById('editBrand').value;
-  allDevices[idx][2] = document.getElementById('editBarcode').value;
-  allDevices[idx][3] = document.getElementById('editName').value;
-  allDevices[idx][4] = document.getElementById('editUser').value;
-  allDevices[idx][5] = document.getElementById('editDept').value;
-  allDevices[idx][7] = document.getElementById('editCPU').value;
-  allDevices[idx][8] = document.getElementById('editRAM').value;
-  allDevices[idx][9] = document.getElementById('editDC').value;
-
-  closeEditModal();
-  updateKPIs();
-  displayPage();
-  appendChatMessage('ai', `✅ Đã cập nhật thành công thiết bị: **${allDevices[idx][3]}** (${allDevices[idx][4] || 'Chưa gán người dùng'}).`);
-}
-
-// In-app AI Chat handling
-function askQuickPrompt(text) {
-  document.getElementById('chatInput').value = text;
-  sendChatMessage();
-}
-
-function appendChatMessage(sender, text) {
-  let stream = document.getElementById('chatStream');
-  let div = document.createElement('div');
-  div.className = 'chat-msg ' + sender;
-  div.innerHTML = text.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-  stream.appendChild(div);
-  stream.scrollTop = stream.scrollHeight;
-}
-
-function sendChatMessage() {
-  let input = document.getElementById('chatInput');
-  let query = (input.value || '').trim();
-  if (!query) return;
-
-  appendChatMessage('user', query);
-  input.value = '';
-
-  // Local AI rules engine for instant answers
-  setTimeout(() => {
-    let lower = query.toLowerCase();
-    let reply = '';
-    
-    if (lower.includes('chưa join') || lower.includes('dc') || lower.includes('domain')) {
-      let unjoined = allDevices.filter(d => String(d[9] || '').trim() !== '1');
-      reply = `🛡️ **Báo cáo Join Domain (DC):** Hiện có **${unjoined.length} thiết bị** chưa join DC (chiếm ${((unjoined.length/allDevices.length)*100).toFixed(1)}%). Cần rà soát chính sách bảo mật cho nhóm này.`;
-    } else if (lower.includes('phòng ban') || lower.includes('đơn vị')) {
-      let map = {};
-      allDevices.forEach(d => { let dep = d[5] || 'Khác'; map[dep] = (map[dep] || 0) + 1; });
-      let sorted = Object.entries(map).sort((a,b) => b[1] - a[1]).slice(0, 5);
-      reply = `🏢 **Top 5 phòng ban nhiều máy nhất:**\n` + sorted.map((s, i) => `${i+1}. ${s[0]}: **${s[1]} máy**`).join('\n');
-    } else if (lower.includes('pc') || lower.includes('laptop') || lower.includes('loại máy')) {
-      let pc = allDevices.filter(d => (d[0]||'').toLowerCase().includes('pc')).length;
-      let lap = allDevices.filter(d => (d[0]||'').toLowerCase().includes('lap')).length;
-      let ipad = allDevices.filter(d => (d[0]||'').toLowerCase().includes('ipad')).length;
-      reply = `💻 **Cơ cấu loại thiết bị:**\n- Desktop (PC): **${pc} máy**\n- Laptop: **${lap} máy**\n- iPad / Tablet: **${ipad} máy**`;
-    } else {
-      reply = `🔍 Em đã quét danh sách 547 thiết bị theo câu hỏi: "${query}". Anh có thể lọc trực tiếp trên bảng hoặc click các nút phân tích nhanh nhé!`;
-      // If window.aicw is available, also notify session
-      if (window.aicw && typeof window.aicw.send === 'function') {
-        window.aicw.send('Người dùng hỏi từ app Quản lý Excel: ' + query);
+    // Check existing session
+    async function checkAuth() {
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (session) {
+        document.getElementById("authOverlay").style.display = "none";
+        document.getElementById("currentUserEmail").innerText = session.user.email;
+        loadFromSupabase();
+      } else {
+        document.getElementById("authOverlay").style.display = "flex";
       }
     }
-    appendChatMessage('ai', reply);
-  }, 400);
-}
 
-function exportCSV() {
-  let csv = '\uFEFFSTT,Loai,Hieu,MaVach,TenMay,NguoiDung,DonVi,ViTri,CPU,RAM,JoinDC\n';
-  allDevices.forEach((d, i) => {
-    let row = [i+1, d[0], d[1], d[2], d[3], d[4], d[5], d[6], d[7], d[8], d[9]].map(v => '"' + (v || '').replace(/"/g, '""') + '"');
-    csv += row.join(',') + '\n';
-  });
-  let blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  let url = URL.createObjectURL(blob);
-  let a = document.createElement('a');
-  a.href = url;
-  a.download = 'Danh_Sach_May_Tinh_HIU.csv';
-  a.click();
-}
-
-// Auto init on ready
-
-if (window.aicw && typeof window.aicw.on === 'function') {
-  window.aicw.on('data', function(d) {
-    if (d && d.chatReply) {
-      appendChatMessage('ai', d.chatReply);
+    function setAuthMode(mode) {
+      authMode = mode;
+      document.getElementById("tabSignIn").className = "auth-tab " + (mode === "signin" ? "active" : "");
+      document.getElementById("tabSignUp").className = "auth-tab " + (mode === "signup" ? "active" : "");
+      document.getElementById("authSubmitBtn").innerText = mode === "signin" ? "Vào Dashboard" : "Tạo Tài Khoản Mới";
+      hideAuthAlert();
     }
-  });
-}
-init();
-</script>
+
+    function showAuthAlert(msg, type) {
+      const el = document.getElementById("authAlert");
+      el.className = "auth-alert " + type;
+      el.innerText = msg;
+    }
+    function hideAuthAlert() {
+      document.getElementById("authAlert").className = "auth-alert";
+    }
+
+    async function handleAuthSubmit() {
+      const email = document.getElementById("authEmail").value.trim();
+      const password = document.getElementById("authPassword").value.trim();
+
+      if (!email || !password) {
+        showAuthAlert("Vui lòng nhập đầy đủ Email và Mật khẩu.", "error");
+        return;
+      }
+
+      hideAuthAlert();
+      document.getElementById("authSubmitBtn").innerText = "Đang xử lý...";
+
+      if (authMode === "signin") {
+        const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+        if (error) {
+          // If login fails because user doesn't exist yet, offer hint
+          showAuthAlert("Đăng nhập thất bại: " + error.message + " (Nếu chưa tạo mật khẩu, hãy chọn tab Đăng ký mới).", "error");
+          document.getElementById("authSubmitBtn").innerText = "Vào Dashboard";
+        } else {
+          document.getElementById("authOverlay").style.display = "none";
+          document.getElementById("currentUserEmail").innerText = data.user.email;
+          loadFromSupabase();
+        }
+      } else {
+        const { data, error } = await supabaseClient.auth.signUp({ email, password });
+        if (error) {
+          showAuthAlert("Đăng ký thất bại: " + error.message, "error");
+          document.getElementById("authSubmitBtn").innerText = "Tạo Tài Khoản Mới";
+        } else {
+          showAuthAlert("Tạo tài khoản thành công! Đang vào hệ thống...", "success");
+          setTimeout(() => {
+            document.getElementById("authOverlay").style.display = "none";
+            document.getElementById("currentUserEmail").innerText = email;
+            loadFromSupabase();
+          }, 1000);
+        }
+      }
+    }
+
+    async function handleSignOut() {
+      await supabaseClient.auth.signOut();
+      document.getElementById("authOverlay").style.display = "flex";
+      setAuthMode("signin");
+    }
+
+    // Load devices from Supabase Postgres
+    async function loadFromSupabase() {
+      document.getElementById("recordCount").innerText = "Đang tải dữ liệu từ Supabase Cloud...";
+      const { data, error } = await supabaseClient
+        .from("devices")
+        .select("*")
+        .order("id", { ascending: true });
+
+      if (error) {
+        console.error("Supabase load error:", error);
+        appendChatMessage("ai", "⚠️ Lỗi kết nối Supabase: " + error.message);
+        return;
+      }
+
+      allDevices = data || [];
+      populateDeptFilter();
+      updateKPIs();
+      renderTable();
+      appendChatMessage("ai", `✅ Đã đồng bộ thành công **${allDevices.length} thiết bị** trực tiếp từ Supabase Cloud Database.`);
+    }
+
+    function updateKPIs() {
+      let total = allDevices.length;
+      let pcCount = 0, laptopCount = 0, warningCount = 0;
+      
+      allDevices.forEach(d => {
+        let type = (d.type || "").toLowerCase();
+        if (type.includes("pc")) pcCount++;
+        else if (type.includes("lap") || type.includes("ipad") || type.includes("mac")) laptopCount++;
+        
+        let dc = String(d.join_dc || "").trim();
+        if (dc === "" || dc === "0" || dc.toLowerCase() === "no") {
+          warningCount++;
+        }
+      });
+
+      document.getElementById("kpiTotal").innerText = total;
+      document.getElementById("kpiPC").innerText = pcCount;
+      document.getElementById("kpiLaptop").innerText = laptopCount;
+      document.getElementById("kpiWarning").innerText = warningCount;
+    }
+
+    function populateDeptFilter() {
+      let depts = new Set();
+      allDevices.forEach(d => { if (d.department) depts.add(d.department); });
+      let sel = document.getElementById("deptFilter");
+      sel.innerHTML = '<option value="">-- Tất cả phòng ban --</option>';
+      Array.from(depts).sort().forEach(dept => {
+        let opt = document.createElement("option");
+        opt.value = dept;
+        opt.textContent = dept;
+        sel.appendChild(opt);
+      });
+    }
+
+    function renderTable() {
+      let search = (document.getElementById("searchInput").value || "").toLowerCase();
+      let type = document.getElementById("typeFilter").value;
+      let brand = document.getElementById("brandFilter").value;
+      let dept = document.getElementById("deptFilter").value;
+      let dc = document.getElementById("dcFilter").value;
+
+      filteredDevices = allDevices.filter(d => {
+        let rowStr = `${d.type} ${d.brand} ${d.barcode} ${d.hostname} ${d.user_name} ${d.department} ${d.cpu}`.toLowerCase();
+        if (search && !rowStr.includes(search)) return false;
+        if (type && d.type !== type) return false;
+        if (brand && !(d.brand || "").toLowerCase().includes(brand.toLowerCase())) return false;
+        if (dept && d.department !== dept) return false;
+        
+        let isJoined = String(d.join_dc || "").trim() === "1";
+        if (dc === "joined" && !isJoined) return false;
+        if (dc === "not_joined" && isJoined) return false;
+        return true;
+      });
+
+      currentPage = 1;
+      displayPage();
+    }
+
+    function displayPage() {
+      let tbody = document.getElementById("tableBody");
+      tbody.innerHTML = "";
+      let start = (currentPage - 1) * pageSize;
+      let end = Math.min(start + pageSize, filteredDevices.length);
+      let pageItems = filteredDevices.slice(start, end);
+
+      if (pageItems.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding: 24px; color: var(--ui-muted-fg);">Không tìm thấy thiết bị phù hợp.</td></tr>';
+      } else {
+        pageItems.forEach((d, idx) => {
+          let tr = document.createElement("tr");
+          let globalIdx = allDevices.indexOf(d);
+          
+          let typeBadge = "badge-pc";
+          let typeLower = (d.type || "").toLowerCase();
+          if (typeLower.includes("lap")) typeBadge = "badge-laptop";
+          else if (typeLower.includes("ipad")) typeBadge = "badge-ipad";
+
+          let isDc = String(d.join_dc || "").trim() === "1";
+          let dcHtml = isDc ? '<span class="device-badge badge-dc-yes">Đã Join</span>' : '<span class="device-badge badge-dc-no">Chưa</span>';
+
+          tr.innerHTML = `
+            <td style="text-align: center; color: var(--ui-muted-fg);">${start + idx + 1}</td>
+            <td><span class="device-badge ${typeBadge}">${d.type || "N/A"}</span></td>
+            <td><strong>${d.brand || ""}</strong></td>
+            <td><code>${d.barcode || ""}</code></td>
+            <td><strong>${d.hostname || "N/A"}</strong></td>
+            <td>${d.user_name || "Chưa gán"}</td>
+            <td>${d.department || "N/A"}</td>
+            <td>${d.cpu || ""} ${d.ram ? "• " + d.ram + "GB" : ""}</td>
+            <td>${dcHtml}</td>
+            <td style="text-align: center;">
+              <button class="ui-btn ghost sm" style="padding: 2px 6px;" onclick="openEditModal(${globalIdx})">✏️</button>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+      }
+
+      let totalPages = Math.ceil(filteredDevices.length / pageSize) || 1;
+      document.getElementById("recordCount").innerText = `Hiển thị ${pageItems.length} / ${filteredDevices.length} máy (Supabase Cloud)`;
+      document.getElementById("pageInfo").innerText = `Trang ${currentPage} / ${totalPages}`;
+    }
+
+    function prevPage() {
+      if (currentPage > 1) { currentPage--; displayPage(); }
+    }
+    function nextPage() {
+      let totalPages = Math.ceil(filteredDevices.length / pageSize) || 1;
+      if (currentPage < totalPages) { currentPage++; displayPage(); }
+    }
+
+    function openEditModal(globalIdx) {
+      let d = allDevices[globalIdx];
+      if (!d) return;
+      document.getElementById("editIndex").value = globalIdx;
+      document.getElementById("editDeviceId").value = d.id;
+      document.getElementById("editType").value = d.type || "PC";
+      document.getElementById("editBrand").value = d.brand || "Dell";
+      document.getElementById("editBarcode").value = d.barcode || "";
+      document.getElementById("editName").value = d.hostname || "";
+      document.getElementById("editUser").value = d.user_name || "";
+      document.getElementById("editDept").value = d.department || "";
+      document.getElementById("editCPU").value = d.cpu || "";
+      document.getElementById("editRAM").value = d.ram || "";
+      document.getElementById("editDC").value = String(d.join_dc || "").trim() === "1" ? "1" : "0";
+      document.getElementById("editModal").classList.add("active");
+    }
+
+    function closeEditModal() {
+      document.getElementById("editModal").classList.remove("active");
+    }
+
+    async function saveDeviceChanges() {
+      let idx = parseInt(document.getElementById("editIndex").value);
+      let deviceId = document.getElementById("editDeviceId").value;
+      if (isNaN(idx) || !allDevices[idx]) return;
+
+      const btn = document.getElementById("btnSaveCloud");
+      btn.innerText = "Đang lưu Cloud...";
+      btn.disabled = true;
+
+      const updatedPayload = {
+        type: document.getElementById("editType").value,
+        brand: document.getElementById("editBrand").value,
+        barcode: document.getElementById("editBarcode").value,
+        hostname: document.getElementById("editName").value,
+        user_name: document.getElementById("editUser").value,
+        department: document.getElementById("editDept").value,
+        cpu: document.getElementById("editCPU").value,
+        ram: document.getElementById("editRAM").value,
+        join_dc: document.getElementById("editDC").value
+      };
+
+      // Update directly to Supabase Postgres Table
+      const { data, error } = await supabaseClient
+        .from("devices")
+        .update(updatedPayload)
+        .eq("id", deviceId);
+
+      btn.innerText = "💾 Lưu lên Cloud";
+      btn.disabled = false;
+
+      if (error) {
+        alert("Lỗi khi cập nhật lên Supabase: " + error.message);
+        return;
+      }
+
+      // Update local state
+      Object.assign(allDevices[idx], updatedPayload);
+
+      closeEditModal();
+      updateKPIs();
+      displayPage();
+      appendChatMessage("ai", `✅ Đã lưu trực tiếp lên Supabase Cloud: Máy **${updatedPayload.hostname}** (${updatedPayload.user_name || "Chưa gán"}).`);
+    }
+
+    function askQuickPrompt(text) {
+      document.getElementById("chatInput").value = text;
+      sendChatMessage();
+    }
+
+    function appendChatMessage(sender, text) {
+      let stream = document.getElementById("chatStream");
+      let div = document.createElement("div");
+      div.className = "chat-msg " + sender;
+      div.innerHTML = text.replace(/\n/g, "<br>").replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+      stream.appendChild(div);
+      stream.scrollTop = stream.scrollHeight;
+    }
+
+    function sendChatMessage() {
+      let input = document.getElementById("chatInput");
+      let query = (input.value || "").trim();
+      if (!query) return;
+
+      appendChatMessage("user", query);
+      input.value = "";
+
+      setTimeout(() => {
+        let lower = query.toLowerCase();
+        let reply = "";
+        
+        if (lower.includes("chưa join") || lower.includes("dc") || lower.includes("domain")) {
+          let unjoined = allDevices.filter(d => String(d.join_dc || "").trim() !== "1");
+          reply = `🛡️ **Báo cáo Supabase Cloud:** Hiện có **${unjoined.length} thiết bị** chưa join DC (chiếm ${((unjoined.length/allDevices.length)*100).toFixed(1)}%). Cần kiểm tra rà soát bảo mật.`;
+        } else if (lower.includes("phòng ban") || lower.includes("đơn vị")) {
+          let map = {};
+          allDevices.forEach(d => { let dep = d.department || "Khác"; map[dep] = (map[dep] || 0) + 1; });
+          let sorted = Object.entries(map).sort((a,b) => b[1] - a[1]).slice(0, 5);
+          reply = `🏢 **Top 5 phòng ban nhiều máy nhất (Cloud):**\n` + sorted.map((s, i) => `${i+1}. ${s[0]}: **${s[1]} máy**`).join('\n');
+        } else if (lower.includes("pc") || lower.includes("laptop") || lower.includes("loại máy")) {
+          let pc = allDevices.filter(d => (d.type || "").toLowerCase().includes("pc")).length;
+          let lap = allDevices.filter(d => (d.type || "").toLowerCase().includes("lap")).length;
+          let ipad = allDevices.filter(d => (d.type || "").toLowerCase().includes("ipad")).length;
+          reply = `💻 **Cơ cấu loại thiết bị từ Supabase:**\n- Desktop (PC): **${pc} máy**\n- Laptop: **${lap} máy**\n- iPad / Tablet: **${ipad} máy**`;
+        } else {
+          reply = `🔍 Đã tra cứu dữ liệu đám mây Supabase theo câu hỏi: "${query}". Anh có thể lọc trực tiếp trên bảng hoặc sửa nhanh bằng nút ✏️ nhé!`;
+          if (window.aicw && typeof window.aicw.send === 'function') {
+            window.aicw.send('Người dùng hỏi từ app Quản lý Excel Supabase: ' + query);
+          }
+        }
+        appendChatMessage("ai", reply);
+      }, 300);
+    }
+
+    function exportCSV() {
+      let csv = '\uFEFFID,Loai,Hieu,MaVach,TenMay,NguoiDung,DonVi,ViTri,CPU,RAM,JoinDC\n';
+      allDevices.forEach(d => {
+        let row = [d.id, d.type, d.brand, d.barcode, d.hostname, d.user_name, d.department, d.location, d.cpu, d.ram, d.join_dc].map(v => '"' + (v || "").toString().replace(/"/g, '""') + '"');
+        csv += row.join(",") + "\n";
+      });
+      let blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      let url = URL.createObjectURL(blob);
+      let a = document.createElement("a");
+      a.href = url;
+      a.download = "Danh_Sach_May_Tinh_Supabase.csv";
+      a.click();
+    }
+
+    if (window.aicw && typeof window.aicw.on === 'function') {
+      window.aicw.on('data', function(d) {
+        if (d && d.chatReply) {
+          appendChatMessage('ai', d.chatReply);
+        }
+      });
+    }
+
+    // Run auth check on init
+    checkAuth();
+  </script>
+</body>
+</html>
