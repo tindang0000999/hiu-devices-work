@@ -490,9 +490,18 @@
       let dept = document.getElementById("deptFilter").value;
       let dc = document.getElementById("dcFilter").value;
 
+      const sNorm = removeVietnameseTones(search);
+      const sWords = sNorm.split(/\s+/).filter(w => w.length > 0);
+
       filteredDevices = allDevices.filter(d => {
-        let rowStr = `${d.type} ${d.brand} ${d.barcode} ${d.hostname} ${d.user_name} ${d.department} ${d.cpu}`.toLowerCase();
-        if (search && !rowStr.includes(search)) return false;
+        const fullStr = `${d.type} ${d.brand} ${d.barcode} ${d.hostname} ${d.user_name} ${d.department} ${d.cpu}`.toLowerCase();
+        const fullNorm = removeVietnameseTones(fullStr);
+        if (sWords.length > 0) {
+          // All search words must be in the row
+          for (let w of sWords) {
+            if (!fullNorm.includes(w)) return false;
+          }
+        }
         if (type && d.type !== type) return false;
         if (brand && !(d.brand || "").toLowerCase().includes(brand.toLowerCase())) return false;
         if (dept && d.department !== dept) return false;
@@ -659,19 +668,37 @@
 
     function searchDevicesLocal(query) {
       const qNorm = removeVietnameseTones(query);
-      const words = qNorm.split(/\s+/).filter(w => !['xai', 'dung', 'may', 'gi', 'thiet', 'bi', 'cho', 'hoi', 'la', 'ai', 'nao', 'o', 'phong', 'ban'].includes(w));
+      // Remove conversational stop words
+      const stopWords = ['tim', 'kiem', 'xai', 'dung', 'sai', 'may', 'gi', 'thiet', 'bi', 'cho', 'hoi', 'la', 'ai', 'nao', 'o', 'phong', 'ban', 'ten', 'nguoi', 'co', 'anh', 'chi', 'em'];
+      const words = qNorm.split(/\s+/).filter(w => w.length > 1 && !stopWords.includes(w));
       
-      // Match devices
+      if (words.length === 0) return [];
+
       let matches = [];
       for (let d of allDevices) {
-        const fullStr = `${d.type} ${d.brand} ${d.barcode} ${d.hostname} ${d.user_name} ${d.department} ${d.location} ${d.cpu}`.toLowerCase();
-        const fullNorm = removeVietnameseTones(fullStr);
-        
+        const userNorm = removeVietnameseTones(d.user_name || "");
+        const hostNorm = removeVietnameseTones(d.hostname || "");
+        const deptNorm = removeVietnameseTones(d.department || "");
+        const codeNorm = removeVietnameseTones(d.barcode || "");
+        const fullNorm = `${userNorm} ${hostNorm} ${deptNorm} ${codeNorm} ${removeVietnameseTones(d.type || "")} ${removeVietnameseTones(d.brand || "")}`;
+
+        // High priority: match consecutive sequence of words in username or hostname
+        let phrase = words.join(" ");
         let score = 0;
+        if (userNorm.includes(phrase)) score += 100;
+        if (hostNorm.includes(phrase)) score += 80;
+
+        // Count individual matching words
+        let matchedWords = 0;
         for (let w of words) {
-          if (fullNorm.includes(w)) score++;
+          if (userNorm.includes(w)) { matchedWords++; score += 20; }
+          else if (hostNorm.includes(w)) { matchedWords++; score += 15; }
+          else if (deptNorm.includes(w)) { matchedWords++; score += 5; }
+          else if (fullNorm.includes(w)) { matchedWords++; score += 2; }
         }
-        if (score >= Math.max(1, Math.min(2, words.length))) {
+
+        // Require either full phrase match or most search words matched
+        if (score >= 100 || matchedWords >= Math.min(words.length, 2)) {
           matches.push({ d, score });
         }
       }
@@ -712,7 +739,7 @@
           }).join('\n\n');
 
           // Auto filter the table to show matching rows
-          document.getElementById("searchInput").value = query.replace(/(sai|dung|may|gi|thiet|bi|cho|hoi|la)/gi, "").trim();
+          document.getElementById("searchInput").value = query.replace(/(tim|kiem|xai|dung|sai|may|gi|thiet|bi|cho|hoi|la|ten)/gi, "").trim();
           renderTable();
         } else {
           reply = `🔍 Không tìm thấy thông tin thiết bị nào khớp với từ khóa "${query}". Anh thử kiểm tra lại họ tên hoặc gõ mã vạch xem nhé!`;
