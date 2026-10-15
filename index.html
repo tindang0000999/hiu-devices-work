@@ -493,13 +493,24 @@
       const sNorm = removeVietnameseTones(search);
       const sWords = sNorm.split(/\s+/).filter(w => w.length > 0);
 
+      const sPhrase = sWords.join(" ");
+
       filteredDevices = allDevices.filter(d => {
+        const userNorm = removeVietnameseTones(d.user_name || "");
+        const hostNorm = removeVietnameseTones(d.hostname || "");
         const fullStr = `${d.type} ${d.brand} ${d.barcode} ${d.hostname} ${d.user_name} ${d.department} ${d.cpu}`.toLowerCase();
         const fullNorm = removeVietnameseTones(fullStr);
+
         if (sWords.length > 0) {
-          // All search words must be in the row
-          for (let w of sWords) {
-            if (!fullNorm.includes(w)) return false;
+          // Nếu tìm cụm họ tên (>= 2 từ) và có người khớp chính xác cả cụm ➔ chỉ giữ người khớp cả cụm
+          if (sWords.length >= 2 && userNorm.includes(sPhrase)) {
+            // Keep
+          } else if (sWords.length >= 2 && hasExactUserMatch(sPhrase)) {
+            return false;
+          } else {
+            for (let w of sWords) {
+              if (!fullNorm.includes(w)) return false;
+            }
           }
         }
         if (type && d.type !== type) return false;
@@ -648,6 +659,12 @@
       stream.scrollTop = stream.scrollHeight;
     }
 
+
+    function hasExactUserMatch(phrase) {
+      if (!phrase || phrase.length < 3) return false;
+      return allDevices.some(d => removeVietnameseTones(d.user_name || "").includes(phrase));
+    }
+
     function removeVietnameseTones(str) {
       str = str.replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g,"a"); 
       str = str.replace(/è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ/g,"e"); 
@@ -668,42 +685,62 @@
 
     function searchDevicesLocal(query) {
       const qNorm = removeVietnameseTones(query);
-      // Remove conversational stop words
       const stopWords = ['tim', 'kiem', 'xai', 'dung', 'sai', 'may', 'gi', 'thiet', 'bi', 'cho', 'hoi', 'la', 'ai', 'nao', 'o', 'phong', 'ban', 'ten', 'nguoi', 'co', 'anh', 'chi', 'em'];
-      const words = qNorm.split(/\s+/).filter(w => w.length > 1 && !stopWords.includes(w));
-      
+      const words = qNorm.split(/\s+/).filter(w => w.length > 0 && !stopWords.includes(w));
+      const phrase = words.join(" ");
+
       if (words.length === 0) return [];
 
-      let matches = [];
+      let exactPhraseMatches = [];
+      let tokenMatches = [];
+
       for (let d of allDevices) {
         const userNorm = removeVietnameseTones(d.user_name || "");
         const hostNorm = removeVietnameseTones(d.hostname || "");
         const deptNorm = removeVietnameseTones(d.department || "");
         const codeNorm = removeVietnameseTones(d.barcode || "");
-        const fullNorm = `${userNorm} ${hostNorm} ${deptNorm} ${codeNorm} ${removeVietnameseTones(d.type || "")} ${removeVietnameseTones(d.brand || "")}`;
 
-        // High priority: match consecutive sequence of words in username or hostname
-        let phrase = words.join(" ");
-        let score = 0;
-        if (userNorm.includes(phrase)) score += 100;
-        if (hostNorm.includes(phrase)) score += 80;
-
-        // Count individual matching words
-        let matchedWords = 0;
-        for (let w of words) {
-          if (userNorm.includes(w)) { matchedWords++; score += 20; }
-          else if (hostNorm.includes(w)) { matchedWords++; score += 15; }
-          else if (deptNorm.includes(w)) { matchedWords++; score += 5; }
-          else if (fullNorm.includes(w)) { matchedWords++; score += 2; }
+        // 1. Tuyệt đối ưu tiên: Tên người dùng chứa trọn vẹn cụm từ tìm kiếm (Ví dụ: "nguyen anh thu")
+        if (phrase.length >= 3 && userNorm.includes(phrase)) {
+          // Tính điểm ưu tiên: nếu bằng chính xác 100% thì điểm cao nhất
+          let pScore = (userNorm === phrase) ? 1000 : 500;
+          exactPhraseMatches.push({ d, score: pScore });
+          continue;
         }
 
-        // Require either full phrase match or most search words matched
-        if (score >= 100 || matchedWords >= Math.min(words.length, 2)) {
-          matches.push({ d, score });
+        // Tên máy chứa trọn vẹn
+        if (phrase.length >= 3 && hostNorm.includes(phrase)) {
+          exactPhraseMatches.push({ d, score: 300 });
+          continue;
+        }
+
+        // 2. Nếu không khớp cả cụm, kiểm tra TẤT CẢ các từ đều phải có mặt
+        let allMatched = true;
+        let tScore = 0;
+        for (let w of words) {
+          if (userNorm.includes(w)) { tScore += 30; }
+          else if (hostNorm.includes(w)) { tScore += 20; }
+          else if (deptNorm.includes(w)) { tScore += 10; }
+          else if (codeNorm.includes(w)) { tScore += 10; }
+          else {
+            allMatched = false;
+            break;
+          }
+        }
+
+        if (allMatched && tScore > 0) {
+          tokenMatches.push({ d, score: tScore });
         }
       }
-      matches.sort((a,b) => b.score - a.score);
-      return matches.map(m => m.d);
+
+      // Nếu có người khớp trọn vẹn cụm từ (Ví dụ: "Nguyễn Anh Thư") ➔ CHỈ trả về đúng người đó!
+      if (exactPhraseMatches.length > 0) {
+        exactPhraseMatches.sort((a,b) => b.score - a.score);
+        return exactPhraseMatches.map(m => m.d);
+      }
+
+      tokenMatches.sort((a,b) => b.score - a.score);
+      return tokenMatches.map(m => m.d);
     }
 
     function sendChatMessage() {
