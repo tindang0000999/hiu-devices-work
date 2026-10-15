@@ -101,9 +101,8 @@
       <h2 class="auth-title">Đăng Nhập Hệ Thống</h2>
       <p class="auth-subtitle">Cơ sở dữ liệu máy tính kiểm kê HIU<br>Bảo vệ bằng <strong>Supabase Cloud Database</strong></p>
 
-      <div class="auth-tabs">
-        <div class="auth-tab active" id="tabSignIn" onclick="setAuthMode('signin')">Đăng nhập</div>
-        <div class="auth-tab" id="tabSignUp" onclick="setAuthMode('signup')">Đăng ký mới</div>
+      <div style="text-align: center; margin-bottom: 20px; font-weight: 700; color: #2563eb; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; background: #eff6ff; padding: 8px; border-radius: 8px;">
+        🔒 Hệ Thống Nội Bộ • Chỉ Đăng Nhập
       </div>
 
       <div class="auth-alert" id="authAlert"></div>
@@ -412,30 +411,14 @@
       hideAuthAlert();
       document.getElementById("authSubmitBtn").innerText = "Đang xử lý...";
 
-      if (authMode === "signin") {
-        const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-        if (error) {
-          // If login fails because user doesn't exist yet, offer hint
-          showAuthAlert("Đăng nhập thất bại: " + error.message + " (Nếu chưa tạo mật khẩu, hãy chọn tab Đăng ký mới).", "error");
-          document.getElementById("authSubmitBtn").innerText = "Vào Dashboard";
-        } else {
-          document.getElementById("authOverlay").style.display = "none";
-          document.getElementById("currentUserEmail").innerText = data.user.email;
-          loadFromSupabase();
-        }
+      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+      if (error) {
+        showAuthAlert("Đăng nhập thất bại: Tài khoản hoặc mật khẩu không đúng. Hệ thống không cho phép người ngoài tự đăng ký.", "error");
+        document.getElementById("authSubmitBtn").innerText = "Vào Dashboard";
       } else {
-        const { data, error } = await supabaseClient.auth.signUp({ email, password });
-        if (error) {
-          showAuthAlert("Đăng ký thất bại: " + error.message, "error");
-          document.getElementById("authSubmitBtn").innerText = "Tạo Tài Khoản Mới";
-        } else {
-          showAuthAlert("Tạo tài khoản thành công! Đang vào hệ thống...", "success");
-          setTimeout(() => {
-            document.getElementById("authOverlay").style.display = "none";
-            document.getElementById("currentUserEmail").innerText = email;
-            loadFromSupabase();
-          }, 1000);
-        }
+        document.getElementById("authOverlay").style.display = "none";
+        document.getElementById("currentUserEmail").innerText = data.user.email;
+        loadFromSupabase();
       }
     }
 
